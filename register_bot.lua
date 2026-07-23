@@ -812,10 +812,8 @@ local function bot_parsecommand(pos,item)
         -- mark navigation active so handletimer stays on this command
         meta:set_int("nav_active", 1)
         meta:set_int("nav_pc", PC)
-        meta:set_int("nav_pr", PR)
-        vbots2.log(meta:get_string("name"), "go_player: start")
-        meta:set_int("nav_pc", meta:get_int("PC"))
         meta:set_int("nav_pr", meta:get_int("PR"))
+        vbots2.log(meta:get_string("name"), "go_player: start")
 
         local player_pos = player:get_pos()
         if not player_pos then

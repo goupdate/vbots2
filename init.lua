@@ -20,17 +20,6 @@ mod_storage = minetest.get_mod_storage()
 -- world-unique prefix for save isolation
 local world_name = minetest.get_worldpath():match("([^\\/]+)$") or "unknown"
 
--- bot-specific logger: writes to bot.txt next to debug.txt
-function vbots2.log(bot_name, msg)
-    local t = os.date("!%H:%M:%S")
-    local line = "[" .. t .. "] " .. bot_name .. ": " .. msg .. "\n"
-    local f = io.open(minetest.get_worldpath() .. "/bot.txt", "a")
-    if f then
-        f:write(line)
-        f:close()
-    end
-end
-
 -- logging: writes to bot.txt next to debug.txt
 local log_path = minetest.get_worldpath() .. "/bot.txt"
 function vbots2.log(bot_name, msg)
@@ -265,6 +254,9 @@ vbots2.bot_togglestate = function(pos,mode)
         meta:set_int("PR",0)
         meta:set_string("stack","")
         meta:set_string("home",minetest.serialize(pos))
+        meta:set_int("nav_active", 0)
+        meta:set_string("nav_path", "")
+        meta:set_float("state_stop_time", 0)
     elseif mode == "off" then
         newname = "vbots2:off"
         timer:stop()
@@ -272,8 +264,8 @@ vbots2.bot_togglestate = function(pos,mode)
         meta:set_int("PR",0)
         meta:set_string("stack","")
         meta:set_float("state_stop_time", minetest.get_gametime())
-    elseif mode == "on" then
-        meta:set_float("state_stop_time", 0)
+        meta:set_int("nav_active", 0)
+        meta:set_string("nav_path", "")
     end
     -- update minimap marker texture
     if newname then
