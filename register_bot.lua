@@ -148,6 +148,36 @@ local function position_bot(pos,newpos)
             is_plant = ndef.groups.flora or ndef.groups.grass or ndef.groups.plant or
                        ndef.groups.flower or ndef.groups.sapling or ndef.groups.leaves
         end
+        local is_door = ndef and ndef.groups and ndef.groups.door
+        if moveto_node.name == "air" or is_plant or is_door then
+            -- handle door: right-click toggle, then swap bot/door positions
+            if is_door and player then
+                local door_pos = newpos
+                local door_node = moveto_node
+                local door_def = minetest.registered_nodes[door_node.name]
+                if door_def and door_def.on_rightclick then
+                    door_def.on_rightclick(door_pos, door_node, player)
+                end
+                -- swap: bot to door position, door to bot position
+                local bot_node = minetest.get_node(pos)
+                local hold = meta:to_table()
+                meta:set_string("moving", "1")
+                -- place bot at door position
+                minetest.swap_node(pos, {name = door_node.name, param2 = door_node.param2})
+                minetest.swap_node(door_pos, {name = bot_node.name, param2 = bot_node.param2})
+                minetest.get_node_timer(door_pos):set(1/R, 0)
+                if hold then
+                    minetest.get_meta(door_pos):from_table(hold)
+                end
+                -- close door behind bot
+                local behind_node = minetest.get_node(pos)
+                local behind_def = minetest.registered_nodes[behind_node.name]
+                if behind_def and behind_def.on_rightclick then
+                    behind_def.on_rightclick(pos, behind_node, player)
+                end
+                local dd = minetest.get_node(door_pos)
+                return
+            end
         if moveto_node.name == "air" or is_plant then
             if is_plant then
                 local drops = minetest.get_node_drops(moveto_node.name, "")
@@ -349,6 +379,19 @@ local function bot_build(pos, buildy, filter)
 end
 
 -------------------------------------
+-- Minimap marker color update
+-------------------------------------
+local function update_marker(pos, state)
+    local meta = minetest.get_meta(pos)
+    local bot_key = meta:get_string("key")
+    local bi = vbots2.bot_info[bot_key]
+    if bi and bi.marker then
+        local tex = (state == "waiting") and "vbots_marker_wait.png" or "vbots_marker_on.png"
+        bi.marker:set_properties({textures = {tex}})
+    end
+end
+
+-------------------------------------
 -- A* pathfinding to player
 -------------------------------------
 local facedirs = {
@@ -359,8 +402,21 @@ local facedirs = {
 }
 
 local function is_walkable(p)
-    local n = minetest.get_node(p).name
-    return n == "air"
+    local node = minetest.get_node(p)
+    local n = node.name
+    if n == "air" then return true end
+    local ndef = minetest.registered_nodes[n]
+    if not ndef then return false end
+    -- walkable: plants, grass, flowers, saplings, doors, torch-like
+    local g = ndef.groups or {}
+    if g.flora or g.plant or g.grass or g.flower or g.sapling or g.attached_node or g.torch or g.door then
+        return true
+    end
+    -- not walkable: liquids
+    if g.water or g.lava or g.liquid then
+        return false
+    end
+    return false
 end
 
 local function find_path_to_player(bot_pos, bot_facing, player_pos)
@@ -407,11 +463,11 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
             goto continue_astar
         end
 
-        -- goal: adjacent to player (1 block horizontal, same Y)
+        -- goal: within 1 block of target (any direction), not same block
         local dx = math.abs(cur.pos.x - player_pos.x)
         local dy = math.abs(cur.pos.y - player_pos.y)
         local dz = math.abs(cur.pos.z - player_pos.z)
-        if (dx + dz) <= 1 and dy == 0 then
+        if dx <= 1 and dy <= 1 and dz <= 1 and (dx + dy + dz) > 0 then
             if #cur.actions == 0 then return "done" end
             return table.concat(cur.actions, ",")
         end
@@ -734,12 +790,21 @@ local function bot_parsecommand(pos,item)
             round_pos.y = gy + 1
         end
 
-        -- check if already at goal
+        -- check if at goal (within 1 block, not same block)
         local dx = math.abs(pos.x - round_pos.x)
         local dy = math.abs(pos.y - round_pos.y)
         local dz = math.abs(pos.z - round_pos.z)
-        if (dx + dz) <= 1 and dy == 0 then
-            return -- done, advance to next command
+        if dx <= 1 and dy <= 1 and dz <= 1 and (dx + dy + dz) > 0 then
+            -- at goal: set retry timer, wait 5s before recalculating
+            local retry_time = meta:get_float("nav_retry")
+            local now = minetest.get_gametime()
+            if retry_time == 0 then
+                meta:set_float("nav_retry", now)
+            elseif now - retry_time >= 5 then
+                meta:set_float("nav_retry", 0)
+            end
+            meta:set_int("PC", PC - 1)
+            return
         end
 
         -- try stored path first
@@ -812,7 +877,16 @@ local function bot_parsecommand(pos,item)
             meta:set_int("PC", PC - 1)
             return
         end
-    end
+    elseif item == "vbots2:redstone_toggle" then
+        local owner = meta:get_string("owner")
+        local player = minetest.get_player_by_name(owner)
+        if player then
+            local front_node, front_pos = get_front_node(pos)
+            local ndef = minetest.registered_nodes[front_node.name]
+            if ndef and ndef.on_rightclick then
+                ndef.on_rightclick(front_pos, front_node, player)
+            end
+        end
     local fnum = item:match("^vbots2:f(%d)$")
     if fnum then
         local PC = meta:get_int("PC")
@@ -863,11 +937,13 @@ local function bot_handletimer(pos)
         return true
     end
 
-    -- sync minimap marker
+    -- sync minimap marker position + color
     local bot_key = meta:get_string("key")
     local bi = vbots2.bot_info[bot_key]
     if bi and bi.marker then
         bi.marker:set_pos({x = pos.x, y = pos.y + 0.5, z = pos.z})
+        local tex = (meta:get_float("nav_retry") > 0) and "vbots_marker_wait.png" or "vbots_marker_on.png"
+        bi.marker:set_properties({textures = {tex}})
     end
 
     local inv = meta:get_inventory()
@@ -994,7 +1070,18 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
             vbots2.bot_info[bot_key] = nil
             clean_bot_table()
         end
+})
+
+-------------------------------------
+-- Mesecon integration: turn bot on by redstone
+-------------------------------------
+if minetest.get_modpath("mesecons") then
+    mesecon.register_effector("vbots2:off", "vbots2:on", {
+        action_on = function(pos)
+            vbots2.bot_togglestate(pos, "on")
+        end,
     })
+end
 end
 
 register_bot("vbots2:off", "Inactive Vbot", {

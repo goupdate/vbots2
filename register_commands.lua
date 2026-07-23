@@ -79,4 +79,5 @@ register_command("sign_read","Load value from sign","vbots_sign_read.png")
 register_command("sign_print","Write value to sign","vbots_sign_print.png")
 register_command("count","Count items in inventory","vbots_count.png")
 register_command("go_player","Go to player","vbots_go_player.png")
+register_command("redstone_toggle","Toggle redstone","vbots_redstone_toggle.png")
 
