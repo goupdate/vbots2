@@ -48,12 +48,14 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                         end
                     end
                     for _, bot in ipairs(to_remove) do
-                        local bi = vbots2.bot_info[bot.key]
-                        if bi and bi.marker then
-                            bi.marker:remove()
-                        end
-                        if bi and bi.body then
-                            bi.body:remove()
+                        -- remove all vbots2 entities at bot position
+                        for _, obj in ipairs(minetest.get_objects_inside_radius(bot.pos, 1.5)) do
+                            if obj and obj:get_luaentity() then
+                                local ename = obj:get_luaentity().name
+                                if ename and ename:find("^vbots2:") then
+                                    obj:remove()
+                                end
+                            end
                         end
                         vbots2.bot_info[bot.key] = nil
                         minetest.set_node(bot.pos, {name = "air"})

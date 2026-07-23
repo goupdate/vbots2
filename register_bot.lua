@@ -909,16 +909,7 @@ end
 
                 end
         else
-            -- no path: wait 5s and retry
-            local retry_time = meta:get_float("nav_retry")
-            local now = minetest.get_gametime()
-            if retry_time == 0 then
-                meta:set_float("nav_retry", now)
-            elseif now - retry_time >= 5 then
-                meta:set_float("nav_retry", 0)
-                meta:set_string("nav_path", "")
-                return -- give up, advance to next command
-            end
+            -- no path: retry next tick
             meta:set_int("PC", PC - 1)
             return
         end
@@ -1185,7 +1176,7 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
         can_dig = function(pos,player)
             return interact(player,pos)
         end,
-        on_destruct = function(pos)
+on_destruct = function(pos)
             local meta = minetest.get_meta(pos)
             -- skip inventory drop during bot movement (position_bot sets moving flag)
             if meta:get_string("moving") ~= "1" then
@@ -1200,14 +1191,17 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
             end
             local bot_key = meta:get_string("key")
             local bi = vbots2.bot_info[bot_key]
-            if bi and bi.marker then
-                bi.marker:remove()
-            end
-            if bi and bi.body then
-                bi.body:remove()
+            -- remove all vbots2 entities at this position
+            for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 1.5)) do
+                if obj and obj:get_luaentity() then
+                    local ename = obj:get_luaentity().name
+                    if ename and ename:find("^vbots2:") then
+                        obj:remove()
+                    end
+                end
             end
             vbots2.bot_info[bot_key] = nil
-clean_bot_table()
+ clean_bot_table()
         end
 })
 end
@@ -1249,7 +1243,7 @@ minetest.register_entity("vbots2:minimap_marker", {
     initial_properties = {
         visual = "sprite",
         visual_size = {x = 0, y = 0, z = 0},
-        textures = {"vbots_marker_on.png"},
+        textures = {"blank.png"},
         glow = 0,
         physical = false,
         collide_with_objects = false,
