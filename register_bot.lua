@@ -178,7 +178,6 @@ local function position_bot(pos,newpos)
                 local dd = minetest.get_node(door_pos)
                 return
             end
-        if moveto_node.name == "air" or is_plant then
             if is_plant then
                 local drops = minetest.get_node_drops(moveto_node.name, "")
                 local inv = minetest.get_inventory({type="node", pos=pos})
