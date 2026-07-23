@@ -26,6 +26,16 @@ vbots2 adds **conditional logic** and quality-of-life improvements on top of the
 - **Right-click** (double-tap on Android) to open the menu.
 - **Dig the bot** by hitting it with anything except an empty hand. Items in the bot's inventory will drop on the ground.
 
+### Crafting
+
+| | | |
+|---|---|---|
+| Iron | Iron | Iron |
+| Iron | Redstone | Iron |
+| Iron | Iron | Iron |
+
+→ **1 Vbot (inactive)**
+
 ---
 
 ## The Main Menu
