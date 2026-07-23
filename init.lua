@@ -106,7 +106,7 @@ vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
     meta:mark_as_private("home")
     meta:set_int("panel",0)
     meta:mark_as_private("panel")
-    meta:set_int("steptime",1)
+    meta:set_int("steptime",2)
     meta:mark_as_private("steptime")
     meta:set_string("key", bot_key)
     meta:mark_as_private("key")

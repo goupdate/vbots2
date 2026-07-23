@@ -1284,10 +1284,8 @@ minetest.register_entity("vbots2:bot_body", {
         collide_with_objects = true,
         collisionbox = {-0.3, -0.5, -0.3, 0.3, 1.5, 0.3},
         visual = "cube",
-        visual_size = {x = 0.6, y = 1.5, z = 0.6},
-        textures = {"vbots_turtle_top.png", "vbots_turtle_bottom.png",
-                    "vbots_turtle_right.png", "vbots_turtle_left.png",
-                    "vbots_turtle_tail.png", "vbots_turtle_face.png"},
+        visual_size = {x = 0, y = 0, z = 0},
+        textures = {"blank.png"},
         hp_max = 20,
         -- Mobs target entities with type="npc" (monsters don't attack other monsters)
     },
