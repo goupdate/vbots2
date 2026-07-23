@@ -1265,6 +1265,7 @@ minetest.register_entity("vbots2:bot_body", {
         physical = true,
         collide_with_objects = true,
         collisionbox = {-0.3, -0.5, -0.3, 0.3, 1.5, 0.3},
+        pointable = false,
         visual = "cube",
         visual_size = {x = 0, y = 0, z = 0},
         textures = {"blank.png"},

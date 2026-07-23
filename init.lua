@@ -20,14 +20,12 @@ mod_storage = minetest.get_mod_storage()
 -- world-unique prefix for save isolation
 local world_name = minetest.get_worldpath():match("([^\\/]+)$") or "unknown"
 
--- logging: writes to bot.txt next to debug.txt
-local log_path = minetest.get_worldpath() .. "/bot.txt"
+-- logging: writes to debug.txt (via minetest.log), toggle with vbots2.enable_log
+vbots2.enable_log = true
+
 function vbots2.log(bot_name, msg)
-    local f = io.open(log_path, "a")
-    if f then
-        f:write(string.format("[%s] %s: %s\n", os.date("%H:%M:%S"), bot_name, msg))
-        f:close()
-    end
+    if not vbots2.enable_log then return end
+    minetest.log("action", "[vbots2] " .. tostring(bot_name) .. ": " .. tostring(msg))
 end
 
 local function bot_namer()
