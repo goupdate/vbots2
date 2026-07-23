@@ -48,6 +48,10 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                         end
                     end
                     for _, bot in ipairs(to_remove) do
+                        local bi = vbots2.bot_info[bot.key]
+                        if bi and bi.marker then
+                            bi.marker:remove()
+                        end
                         vbots2.bot_info[bot.key] = nil
                         minetest.set_node(bot.pos, {name = "air"})
                     end

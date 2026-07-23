@@ -59,7 +59,11 @@ vbots2.bot_restore = function(pos)
     local bot_owner = meta:get_string("owner")
     local bot_name = meta:get_string("name")
     if not vbots2.bot_info[bot_key] then
-        vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
+vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
+    -- minimap marker
+    local marker_pos = {x = pos.x, y = pos.y + 0.5, z = pos.z}
+    local marker = minetest.add_entity(marker_pos, "vbots2:minimap_marker")
+    vbots2.bot_info[bot_key].marker = marker
         meta:set_string("infotext", bot_name .. " (" .. bot_owner .. ")")
         --print(dump(vbots2.bot_info))
     end
@@ -235,6 +239,15 @@ vbots2.bot_togglestate = function(pos,mode)
         meta:set_int("PC",0)
         meta:set_int("PR",0)
         meta:set_string("stack","")
+    end
+    -- update minimap marker texture
+    if newname then
+        local bot_key = meta:get_string("key")
+        local bi = vbots2.bot_info[bot_key]
+        if bi and bi.marker then
+            local tex = (mode == "on") and "vbots_marker_on.png" or "vbots_marker_off.png"
+            bi.marker:set_properties({textures = {tex}})
+        end
     end
     --print(node.name.." "..newname)
     if newname then

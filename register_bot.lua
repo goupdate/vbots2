@@ -349,7 +349,9 @@ local function is_walkable(p)
 end
 
 local function find_path_to_player(bot_pos, bot_facing, player_pos)
-    local max_steps = 25
+    local max_steps = 500
+    local max_visited = 50000
+    local visited_count = 0
     local visited = {}
     local function key(pos, facing)
         return pos.x .. "," .. pos.y .. "," .. pos.z .. "," .. facing
@@ -377,8 +379,12 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
 
     push({pos = bot_pos, facing = bot_facing, g = 0, h = h(bot_pos), actions = {}})
     visited[key(bot_pos, bot_facing)] = true
+    visited_count = 1
 
     while #open > 0 do
+        if visited_count >= max_visited then
+            return nil
+        end
         local cur = table.remove(open, 1)
         --------------------------------------------------------------------------
 
@@ -401,6 +407,7 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
         local fwd = {x = cur.pos.x - dir.x, y = cur.pos.y, z = cur.pos.z - dir.z}
         local fk = key(fwd, cur.facing)
         if is_walkable(fwd) and not visited[fk] then
+            visited_count = visited_count + 1
             visited[fk] = true
             local a = {}
             for _, v in ipairs(cur.actions) do table.insert(a, v) end
@@ -412,6 +419,7 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
         local jmp = {x = cur.pos.x - dir.x, y = cur.pos.y + 1, z = cur.pos.z - dir.z}
         local jk = key(jmp, cur.facing)
         if is_walkable(jmp) and not visited[jk] then
+            visited_count = visited_count + 1
             visited[jk] = true
             local a = {}
             for _, v in ipairs(cur.actions) do table.insert(a, v) end
@@ -423,6 +431,7 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
         local dn = {x = cur.pos.x, y = cur.pos.y - 1, z = cur.pos.z}
         local dk = key(dn, cur.facing)
         if is_walkable(dn) and not visited[dk] then
+            visited_count = visited_count + 1
             visited[dk] = true
             local a = {}
             for _, v in ipairs(cur.actions) do table.insert(a, v) end
@@ -434,6 +443,7 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
         local cwf = (cur.facing + 1) % 4
         local cwk = key(cur.pos, cwf)
         if not visited[cwk] then
+            visited_count = visited_count + 1
             visited[cwk] = true
             local a = {}
             for _, v in ipairs(cur.actions) do table.insert(a, v) end
@@ -445,6 +455,7 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
         local ccwf = (cur.facing - 1) % 4
         local ccwk = key(cur.pos, ccwf)
         if not visited[ccwk] then
+            visited_count = visited_count + 1
             visited[ccwk] = true
             local a = {}
             for _, v in ipairs(cur.actions) do table.insert(a, v) end
@@ -816,6 +827,13 @@ local function bot_handletimer(pos)
         return true
     end
 
+    -- sync minimap marker
+    local bot_key = meta:get_string("key")
+    local bi = vbots2.bot_info[bot_key]
+    if bi and bi.marker then
+        bi.marker:set_pos({x = pos.x, y = pos.y + 0.5, z = pos.z})
+    end
+
     local inv = meta:get_inventory()
     local PC = meta:get_int("PC")
     local PR = meta:get_int("PR")
@@ -933,6 +951,10 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
                 end
             end
             local bot_key = meta:get_string("key")
+            local bi = vbots2.bot_info[bot_key]
+            if bi and bi.marker then
+                bi.marker:remove()
+            end
             vbots2.bot_info[bot_key] = nil
             clean_bot_table()
         end
@@ -965,6 +987,25 @@ register_bot("vbots2:on", "Live Vbot", {
              snappy = 1,
              crumbly = 1,
              oddly_breakable_by_hand = 1,
-             not_in_creative_inventory = 1,
-             }
+not_in_creative_inventory = 1,
+              }
 )
+
+-------------------------------------
+-- Minimap marker entity
+-------------------------------------
+minetest.register_entity("vbots2:minimap_marker", {
+    initial_properties = {
+        visual = "sprite",
+        visual_size = {x = 0.4, y = 0.4},
+        textures = {"vbots_marker_on.png"},
+        glow = 14,
+        physical = false,
+        collide_with_objects = false,
+        pointable = false,
+        static_save = false,
+    },
+    on_activate = function(self)
+        self.object:set_armor_groups({immortal = 1})
+    end,
+})
