@@ -141,7 +141,22 @@ local function position_bot(pos,newpos)
     end
     if not minetest.is_protected(newpos, bot_owner) then
         local moveto_node = minetest.get_node(newpos)
-        if moveto_node.name == "air" then
+        -- cut plants on the way
+        local is_plant = false
+        local ndef = minetest.registered_nodes[moveto_node.name]
+        if ndef and ndef.groups then
+            is_plant = ndef.groups.flora or ndef.groups.grass or ndef.groups.plant or
+                       ndef.groups.flower or ndef.groups.sapling or ndef.groups.leaves
+        end
+        if moveto_node.name == "air" or is_plant then
+            if is_plant then
+                local drops = minetest.get_node_drops(moveto_node.name, "")
+                local inv = minetest.get_inventory({type="node", pos=pos})
+                for _, itemname in ipairs(drops) do
+                    bot_add_items(inv, "main", ItemStack(itemname))
+                end
+                minetest.set_node(newpos, {name="air"})
+            end
             local node = minetest.get_node(pos)
             local hold = meta:to_table()
             -- prevent on_destruct from dropping inventory during move
@@ -706,10 +721,23 @@ local function bot_parsecommand(pos,item)
             return
         end
 
-        -- check if already at goal (adjacent to player)
-        local dx = math.abs(pos.x - player_pos.x)
-        local dy = math.abs(pos.y - player_pos.y)
-        local dz = math.abs(pos.z - player_pos.z)
+        -- if player is flying, trace down to solid ground
+        local round_pos = {x = math.floor(player_pos.x + 0.5), y = math.floor(player_pos.y + 0.5), z = math.floor(player_pos.z + 0.5)}
+        local below_n = minetest.get_node({x = round_pos.x, y = round_pos.y - 1, z = round_pos.z}).name
+        if below_n == "air" then
+            local gy = round_pos.y - 2
+            while gy > -31000 do
+                local nn = minetest.get_node({x = round_pos.x, y = gy, z = round_pos.z}).name
+                if nn ~= "air" then break end
+                gy = gy - 1
+            end
+            round_pos.y = gy + 1
+        end
+
+        -- check if already at goal
+        local dx = math.abs(pos.x - round_pos.x)
+        local dy = math.abs(pos.y - round_pos.y)
+        local dz = math.abs(pos.z - round_pos.z)
         if (dx + dz) <= 1 and dy == 0 then
             return -- done, advance to next command
         end
@@ -744,7 +772,6 @@ local function bot_parsecommand(pos,item)
         end
 
         -- no more path: recalculate
-        local round_pos = {x = math.floor(player_pos.x + 0.5), y = math.floor(player_pos.y + 0.5), z = math.floor(player_pos.z + 0.5)}
         local path = find_path_to_player(pos, facing, round_pos)
         if path == "done" then
             return
@@ -773,7 +800,16 @@ local function bot_parsecommand(pos,item)
                 meta:set_int("PC", PC - 1)
             end
         else
-            -- no path: skip command
+            -- no path: wait 5s and retry
+            local retry_time = meta:get_float("nav_retry")
+            local now = minetest.get_gametime()
+            if retry_time == 0 then
+                meta:set_float("nav_retry", now)
+            elseif now - retry_time >= 5 then
+                meta:set_float("nav_retry", 0)
+                meta:set_string("nav_path", "")
+            end
+            meta:set_int("PC", PC - 1)
             return
         end
     end
