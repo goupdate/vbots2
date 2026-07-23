@@ -1,0 +1,626 @@
+<!DOCTYPE html><html lang="ru"><meta charset="utf-8">
+<title>vbots2</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll()</script>
+<style>
+  body { max-width: 900px; margin: 2em auto; padding: 0 1em; font: 16px/1.6 system-ui, sans-serif; color: #222; }
+  ul, ol { padding-left: 1.5em; margin: .5em 0; }
+  li { margin: .2em 0; }
+  pre { background: #f6f8fa; padding: 1em; border-radius: 6px; overflow-x: auto; }
+  code { background: #f0f0f0; padding: .15em .3em; border-radius: 3px; font-size: .9em; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: .5em; text-align: left; }
+  th { background: #f6f8fa; }
+  h1, h2, h3 { margin-top: 1.5em; }
+</style>
+<h1>vbots2</h1>
+<p>An extended visual programming bot mod for <a href="https://www.luanti.org/">Luanti</a> (formerly Minetest).</p>
+<p>Vbots are single-block "turtle" style bots, programmable in an entirely visual way — no text typing required.</p>
+<h2>What's New in vbots2</h2>
+<p>vbots2 adds <strong>conditional logic</strong> and quality-of-life improvements on top of the original <a href="https://content.luanti.org/packages/Nigel/vbots/">visual-bots by Nigel Garnett</a></p>
+<ul>
+<li>
+<p>Conditional commands: <img alt="=?" src="textures/vbots_eq_check.png" /> <img alt="&lt;&gt;?" src="textures/vbots_neq_check.png" /> <img alt="dig?" src="textures/vbots_dig_check.png" /> — check blocks ahead, chest contents</p>
+</li>
+<li>
+<p>Value comparisons: <img alt="&gt;?" src="textures/vbots_gt_check.png" /> <img alt="&lt;?" src="textures/vbots_lt_check.png" /> <img alt="&gt;=?" src="textures/vbots_gte_check.png" /> <img alt="&lt;=?" src="textures/vbots_lte_check.png" /> — compare variables/numbers</p>
+</li>
+<li>
+<p>Variables A–D and <img alt="#" src="textures/vbots_count.png" /> — memory cells via signs (auto-creates if none ahead), item counting</p>
+</li>
+<li>
+<p><img alt="END" src="textures/vbots_end_program.png" /> command — stops program in main, returns from sub-programs</p>
+</li>
+<li>
+<p>Chest interaction — build transfers one item <strong>ahead</strong> into chest (filter by item type); empty chests can be dug as blocks</p>
+</li>
+<li>
+<p>Magnet pickup — auto-collects dropped items in 1-block radius; excess vanishes</p>
+</li>
+<li>
+<p>Dirt equivalence — <code>dirt</code> and <code>dirt_with_grass</code> treated as same block in conditions</p>
+</li>
+<li>
+<p>Editable bot name, crash fixes (formspec no longer crashes on bot move), inventory drops on removal</p>
+</li>
+</ul>
+<hr />
+<h2>Basics</h2>
+<ul>
+<li>
+<p><strong>Punch</strong> an idle bot with an <strong>empty hand</strong> to start its program (or click the run icon in the menu).</p>
+</li>
+<li>
+<p><strong>Punch</strong> a running bot with an <strong>empty hand</strong> to stop it.</p>
+</li>
+<li>
+<p><strong>Right-click</strong> (double-tap on Android) to open the menu.</p>
+</li>
+<li>
+<p><strong>Dig the bot</strong> by hitting it with anything except an empty hand. Items in the bot's inventory will drop on the ground.</p>
+</li>
+</ul>
+<h3>Crafting</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Iron</td>
+<td>Iron</td>
+<td>Iron</td>
+</tr>
+<tr>
+<td>Iron</td>
+<td>Redstone</td>
+<td>Iron</td>
+</tr>
+<tr>
+<td>Iron</td>
+<td>Iron</td>
+<td>Iron</td>
+</tr>
+</tbody>
+</table>
+<p>→ <strong>1 Vbot (inactive)</strong></p>
+<hr />
+<h2>The Main Menu</h2>
+<p><img alt="Main Menu 1" src="images/doc_menu1.png" /></p>
+<p>The <strong>commands</strong> <img alt="commands" src="textures/vbots_gui_commands.png" /> and <strong>inventory</strong> <img alt="inventory" src="textures/vbots_location_inventory.png" /> icons switch between the two panels.</p>
+<p>The <strong>command panel</strong> (left, shown above) contains all available commands. Click any command to add it to the current sub-program (the red area on the right).</p>
+<p>The <strong>inventory panel</strong> shows the bot's inventory (top) and the player's inventory (bottom). Use this panel to give the bot building materials or take items it has collected.</p>
+<p><img alt="Main Menu 2" src="images/doc_menu2.png" /></p>
+<h3>Controls</h3>
+<table>
+<thead>
+<tr>
+<th>Icon</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="trash" src="textures/vbots_gui_trash.png" /> <strong>Trash</strong></td>
+<td>Deletes the last instruction on the current sub-program page</td>
+</tr>
+<tr>
+<td><img alt="run" src="textures/vbots_gui_run.png" /> <strong>Run</strong></td>
+<td>Starts the program (same as punching with empty hand)</td>
+</tr>
+<tr>
+<td><img alt="save" src="textures/vbots_gui_save.png" /> <strong>Save</strong></td>
+<td>Saves the current program and sub-programs under the bot's name</td>
+</tr>
+<tr>
+<td><img alt="load" src="textures/vbots_gui_load.png" /> <strong>Load</strong></td>
+<td>Opens the load menu to choose, rename, or delete saved programs</td>
+</tr>
+<tr>
+<td><img alt="removeall" src="textures/vbots_gui_nuke.png" /> <strong>Remove All</strong></td>
+<td>1st press: stop all your bots. 2nd press (within 2s): destroy all your bots</td>
+</tr>
+<tr>
+<td><img alt="reset" src="textures/vbots_gui_reset.png" /> <strong>Reset</strong></td>
+<td>Clears all programs (main + sub-programs) but keeps the inventory</td>
+</tr>
+<tr>
+<td><img alt="exit" src="textures/vbots_gui_exit.png" /> <strong>Exit</strong></td>
+<td>Closes the menu</td>
+</tr>
+</tbody>
+</table>
+<h3>Sub-Programs</h3>
+<p>The red panel on the right has <strong>7 pages</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Icon</th>
+<th>Page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="main" src="textures/vbots_fm.png" /></td>
+<td><strong>Main</strong> program — execution starts here</td>
+</tr>
+<tr>
+<td><img alt="sub1" src="textures/vbots_f1.png" /></td>
+<td>Sub-program 1</td>
+</tr>
+<tr>
+<td><img alt="sub2" src="textures/vbots_f2.png" /></td>
+<td>Sub-program 2</td>
+</tr>
+<tr>
+<td><img alt="sub3" src="textures/vbots_f3.png" /></td>
+<td>Sub-program 3</td>
+</tr>
+<tr>
+<td><img alt="sub4" src="textures/vbots_f4.png" /></td>
+<td>Sub-program 4</td>
+</tr>
+<tr>
+<td><img alt="sub5" src="textures/vbots_f5.png" /></td>
+<td>Sub-program 5</td>
+</tr>
+<tr>
+<td><img alt="sub6" src="textures/vbots_f6.png" /></td>
+<td>Sub-program 6</td>
+</tr>
+</tbody>
+</table>
+<p>Call sub-programs using the function icons at the bottom of the command panel.</p>
+<hr />
+<h2>Commands</h2>
+<h3>Movement</h3>
+<table>
+<thead>
+<tr>
+<th>Icon</th>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="forward" src="textures/vbots_move_forward.png" /></td>
+<td>Move Forward</td>
+<td>Move one step forward</td>
+</tr>
+<tr>
+<td><img alt="backward" src="textures/vbots_move_backward.png" /></td>
+<td>Move Backward</td>
+<td>Move one step backward</td>
+</tr>
+<tr>
+<td><img alt="down" src="textures/vbots_move_down.png" /></td>
+<td>Move Down</td>
+<td>Move one step down</td>
+</tr>
+<tr>
+<td><img alt="home" src="textures/vbots_move_home.png" /></td>
+<td>Go Home</td>
+<td>Teleport back to the position where the bot was placed</td>
+</tr>
+<tr>
+<td><img alt="go_player" src="textures/vbots_go_player.png" /></td>
+<td>Go to Player</td>
+<td>Pathfind to owner player, stop 1 block away</td>
+</tr>
+<tr>
+<td><img alt="goto_pos" src="textures/vbots_goto_pos.png" /></td>
+<td>Go to Position</td>
+<td>Pathfind to stored x,y,z coordinates (set via formspec)</td>
+</tr>
+</tbody>
+</table>
+<p>Movement fails if the destination is not empty. <strong>Gravity:</strong> the bot falls automatically if the block below is air (no flying).</p>
+<h3>Turning</h3>
+<table>
+<thead>
+<tr>
+<th>Icon</th>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="cw" src="textures/vbots_turn_clockwise.png" /></td>
+<td>Turn Clockwise</td>
+<td>Rotate 90° right</td>
+</tr>
+<tr>
+<td><img alt="ccw" src="textures/vbots_turn_anticlockwise.png" /></td>
+<td>Turn Anti-Clockwise</td>
+<td>Rotate 90° left</td>
+</tr>
+<tr>
+<td><img alt="random" src="textures/vbots_turn_random.png" /></td>
+<td>Turn Random</td>
+<td>Rotate in a random direction</td>
+</tr>
+</tbody>
+</table>
+<h3>Digging &amp; Building</h3>
+<table>
+<thead>
+<tr>
+<th>Icon</th>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="dig" src="textures/vbots_mode_dig.png" /></td>
+<td>Dig Forward</td>
+<td>Dig the block in front, then move into that space</td>
+</tr>
+<tr>
+<td><img alt="dig up" src="textures/vbots_mode_dig_up.png" /></td>
+<td>Dig Up</td>
+<td>Dig the block above, then move up</td>
+</tr>
+<tr>
+<td><img alt="dig down" src="textures/vbots_mode_dig_down.png" /></td>
+<td>Dig Down</td>
+<td>Dig the block below, then move down</td>
+</tr>
+<tr>
+<td><img alt="build" src="textures/vbots_mode_build.png" /></td>
+<td>Build Behind</td>
+<td>Place a block behind the bot</td>
+</tr>
+<tr>
+<td><img alt="build up" src="textures/vbots_mode_build_up.png" /></td>
+<td>Build Up</td>
+<td>Place a block above the position behind</td>
+</tr>
+<tr>
+<td><img alt="build down" src="textures/vbots_mode_build_down.png" /></td>
+<td>Build Down</td>
+<td>Place a block below the position behind</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Building behavior:</strong></p>
+<ul>
+<li>
+<p>If the target is <strong>air</strong> → places the first block from the bot's inventory</p>
+</li>
+<li>
+<p>If the target is a <strong>chest/container</strong> (any node with <code>container</code> group) → transfers the first item from inventory (or matching item if filter is placed in next slot)</p>
+</li>
+<li>
+<p>If no items in inventory → nothing happens</p>
+</li>
+</ul>
+<p><strong>Digging &amp; Pickup behavior:</strong></p>
+<ul>
+<li>
+<p>Collected items go into the bot's inventory</p>
+</li>
+<li>
+<p><strong>Magnet:</strong> the bot automatically picks up any dropped items within 1-block radius on each tick</p>
+</li>
+<li>
+<p>If inventory is full, excess items <strong>vanish</strong> (no ground drops to avoid pickup/drop loops)</p>
+</li>
+<li>
+<p><strong>Chests:</strong> empty chest → digs it as a block; non-empty chest → takes items (optional filter in next slot)</p>
+</li>
+</ul>
+<h3>Conditions</h3>
+<table>
+<thead>
+<tr>
+<th>Icon</th>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="=?" src="textures/vbots_eq_check.png" /></td>
+<td><strong>Is block ahead?</strong></td>
+<td>Execute next command <strong>only if</strong> the block ahead matches</td>
+</tr>
+<tr>
+<td><img alt="&lt;&gt;?" src="textures/vbots_neq_check.png" /></td>
+<td><strong>Is NOT block ahead?</strong></td>
+<td>Execute next command <strong>only if</strong> the block ahead does NOT match</td>
+</tr>
+<tr>
+<td><img alt="dig?" src="textures/vbots_dig_check.png" /></td>
+<td><strong>Has item in chest?</strong></td>
+<td>Execute next command <strong>only if</strong> the chest ahead contains the specified item</td>
+</tr>
+<tr>
+<td><img alt="&gt;?" src="textures/vbots_gt_check.png" /></td>
+<td><strong>Value &gt; Value?</strong></td>
+<td>Execute next if first value greater than second</td>
+</tr>
+<tr>
+<td><img alt="&lt;?" src="textures/vbots_lt_check.png" /></td>
+<td><strong>Value &lt; Value?</strong></td>
+<td>Execute next if first value less than second</td>
+</tr>
+<tr>
+<td><img alt="&gt;=?" src="textures/vbots_gte_check.png" /></td>
+<td><strong>Value &gt;= Value?</strong></td>
+<td>Execute next if first value greater or equal</td>
+</tr>
+<tr>
+<td><img alt="&lt;=?" src="textures/vbots_lte_check.png" /></td>
+<td><strong>Value &lt;= Value?</strong></td>
+<td>Execute next if first value less or equal</td>
+</tr>
+</tbody>
+</table>
+<p><strong>How conditions work:</strong></p>
+<p>A condition uses 3 slots in the program:</p>
+<pre><code>[ =? ] [ block ] [ command ] [ next... ]
+  (1)     (2)       (3)         (4)
+</code></pre>
+<ol>
+<li>
+<p><strong>Slot 1</strong> — the condition command (<img alt="=?" src="textures/vbots_eq_check.png" /> or <img alt="&lt;&gt;?" src="textures/vbots_neq_check.png" />)</p>
+</li>
+<li>
+<p><strong>Slot 2</strong> — the <strong>block to check for</strong> (place any block item here, e.g. <code>Stone</code>, <code>Dirt</code>)</p>
+</li>
+<li>
+<p><strong>Slot 3</strong> — the <strong>command to execute if the condition is true</strong></p>
+</li>
+<li>
+<p><strong>Slot 4+</strong> — always executed</p>
+</li>
+</ol>
+<p>If slot 2 is empty, it checks for <strong>air</strong> (nothing ahead).</p>
+<p><strong>Special:</strong> <code>dirt</code> and <code>dirt_with_grass</code> (and their <code>mcl_core:</code> variants) are treated as the same block.</p>
+<p><strong>Value comparisons</strong> use 3 slots with <strong>active variable</strong> as left operand:</p>
+<pre><code>[ &gt;? ] [ arg ] [ true-cmd ] [ after... ]
+</code></pre>
+<ul>
+<li>
+<p><strong>Left operand</strong> — the <strong>active variable</strong> (set by <img alt="A" src="textures/vbots_var_a.png" />–<img alt="D" src="textures/vbots_var_d.png" /> before the comparison)</p>
+</li>
+<li>
+<p><strong>Slot arg</strong> — right operand: a number (<img alt="x2" src="textures/vbots_number_2.png" />–<img alt="x7" src="textures/vbots_number_7.png" />), a variable (A–D), or a block (= 1). Empty = 0.</p>
+</li>
+<li>
+<p><strong>Slot true-cmd</strong> — executed if comparison is true</p>
+</li>
+<li>
+<p>If false, true-cmd is skipped, after executes</p>
+</li>
+</ul>
+<p><img alt="A" src="textures/vbots_var_a.png" /> <img alt="&gt;?" src="textures/vbots_gt_check.png" /> <img alt="x2" src="textures/vbots_number_2.png" /> <img alt="forward" src="textures/vbots_move_forward.png" /> <img alt="cw" src="textures/vbots_turn_clockwise.png" />
+→ If var_a &gt; 2: move forward, then turn right. Otherwise: only turn right.</p>
+<h3>Variables &amp; Count</h3>
+<table>
+<thead>
+<tr>
+<th>Icon</th>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="A" src="textures/vbots_var_a.png" /></td>
+<td><strong>Var A</strong></td>
+<td>Select variable A as active</td>
+</tr>
+<tr>
+<td><img alt="B" src="textures/vbots_var_b.png" /></td>
+<td><strong>Var B</strong></td>
+<td>Select variable B as active</td>
+</tr>
+<tr>
+<td><img alt="C" src="textures/vbots_var_c.png" /></td>
+<td><strong>Var C</strong></td>
+<td>Select variable C as active</td>
+</tr>
+<tr>
+<td><img alt="D" src="textures/vbots_var_d.png" /></td>
+<td><strong>Var D</strong></td>
+<td>Select variable D as active</td>
+</tr>
+<tr>
+<td><img alt="read" src="textures/vbots_sign_read.png" /></td>
+<td><strong>Load from sign</strong></td>
+<td>Read number from sign ahead into specified variable (creates sign if none)</td>
+</tr>
+<tr>
+<td><img alt="write" src="textures/vbots_sign_print.png" /></td>
+<td><strong>Write to sign</strong></td>
+<td>Write specified variable value to sign ahead (creates sign if none)</td>
+</tr>
+<tr>
+<td><img alt="count" src="textures/vbots_count.png" /></td>
+<td><strong>Count items</strong></td>
+<td>Count items of a type in inventory, store in active variable</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variables as multipliers:</strong> place a variable after any command to repeat it that many times:</p>
+<p><img alt="forward" src="textures/vbots_move_forward.png" /> <img alt="A" src="textures/vbots_var_a.png" />
+→ If var_a = 5, moves forward 5 times.</p>
+<p><strong>Loading variables:</strong></p>
+<ul>
+<li>
+<p><strong>Signs:</strong> <img alt="read" src="textures/vbots_sign_read.png" /> <img alt="B" src="textures/vbots_var_b.png" /> → reads number from sign ahead into var_b</p>
+</li>
+<li>
+<p><strong>Count:</strong> <code>[A]</code> <code>[count]</code> + [Stone] → counts all stone in inventory, stores in var_a</p>
+</li>
+<li>
+<p><strong>Writing:</strong> <img alt="write" src="textures/vbots_sign_print.png" /> <img alt="C" src="textures/vbots_var_c.png" /> → writes var_c value onto sign ahead</p>
+</li>
+</ul>
+<h3>Program Flow</h3>
+<table>
+<thead>
+<tr>
+<th>Icon</th>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img alt="f1" src="textures/vbots_f1.png" /></td>
+<td><strong>F1</strong></td>
+<td>Call sub-program 1</td>
+</tr>
+<tr>
+<td><img alt="f2" src="textures/vbots_f2.png" /></td>
+<td><strong>F2</strong></td>
+<td>Call sub-program 2</td>
+</tr>
+<tr>
+<td><img alt="f3" src="textures/vbots_f3.png" /></td>
+<td><strong>F3</strong></td>
+<td>Call sub-program 3</td>
+</tr>
+<tr>
+<td><img alt="f4" src="textures/vbots_f4.png" /></td>
+<td><strong>F4</strong></td>
+<td>Call sub-program 4</td>
+</tr>
+<tr>
+<td><img alt="f5" src="textures/vbots_f5.png" /></td>
+<td><strong>F5</strong></td>
+<td>Call sub-program 5</td>
+</tr>
+<tr>
+<td><img alt="f6" src="textures/vbots_f6.png" /></td>
+<td><strong>F6</strong></td>
+<td>Call sub-program 6</td>
+</tr>
+<tr>
+<td><img alt="END" src="textures/vbots_end_program.png" /></td>
+<td><strong>End</strong></td>
+<td>Stop execution (in main) or return (from sub-program)</td>
+</tr>
+<tr>
+<td><img alt="speed" src="textures/vbots_mode_speed.png" /></td>
+<td><strong>Speed</strong></td>
+<td>Set bot step rate (use with number or variable)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Speed:</strong> use <img alt="speed" src="textures/vbots_mode_speed.png" /> with a number (<img alt="x2" src="textures/vbots_number_2.png" />–<img alt="x7" src="textures/vbots_number_7.png" />) or variable to set the bot's step rate. Without a multiplier, resets to normal speed (1 step/tick).</p>
+<h3>Number Multipliers</h3>
+<table>
+<thead>
+<tr>
+<th><img alt="speed" src="textures/vbots_mode_speed.png" /></th>
+<th><img alt="x2" src="textures/vbots_number_2.png" /></th>
+<th><img alt="x3" src="textures/vbots_number_3.png" /></th>
+<th><img alt="x4" src="textures/vbots_number_4.png" /></th>
+<th><img alt="x5" src="textures/vbots_number_5.png" /></th>
+<th><img alt="x6" src="textures/vbots_number_6.png" /></th>
+<th><img alt="x7" src="textures/vbots_number_7.png" /></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Place a number <strong>after</strong> a command to repeat it (N−1) additional times. Works with all commands. <img alt="speed" src="textures/vbots_mode_speed.png" /> sets the bot's step rate multiplier.</p>
+<hr />
+<h2>Examples</h2>
+<h3>Example 1: Walk and Turn</h3>
+<p><img alt="forward" src="textures/vbots_move_forward.png" />
+<img alt="x4" src="textures/vbots_number_4.png" />
+<img alt="clockwise" src="textures/vbots_turn_clockwise.png" />
+<img alt="x2" src="textures/vbots_number_2.png" />
+<img alt="forward" src="textures/vbots_move_forward.png" />
+<img alt="x4" src="textures/vbots_number_4.png" />
+<img alt="clockwise" src="textures/vbots_turn_clockwise.png" />
+<img alt="x2" src="textures/vbots_number_2.png" /></p>
+<p>Moves 4 spaces forward, turns 180°, moves 4 back to start, turns 180° to face original direction.</p>
+<h3>Example 2: Using a Sub-Program</h3>
+<p>In sub-program 1 (<img alt="f1" src="textures/vbots_f1.png" />):</p>
+<p><img alt="forward" src="textures/vbots_move_forward.png" />
+<img alt="x4" src="textures/vbots_number_4.png" />
+<img alt="clockwise" src="textures/vbots_turn_clockwise.png" />
+<img alt="x2" src="textures/vbots_number_2.png" /></p>
+<p>In main (<img alt="fm" src="textures/vbots_fm.png" />):</p>
+<p><img alt="f1" src="textures/vbots_f1.png" />
+<img alt="x2" src="textures/vbots_number_2.png" /></p>
+<p>Calls the sub-program twice.</p>
+<h3>Example 3: Conditional Digging</h3>
+<p>Check if the block ahead is NOT dirt — dig only non-dirt blocks:</p>
+<p><img alt="&lt;&gt;?" src="textures/vbots_neq_check.png" />
++ [Dirt item]
+<img alt="dig" src="textures/vbots_mode_dig.png" />
+<img alt="forward" src="textures/vbots_move_forward.png" /></p>
+<blockquote>
+<p>Place a <strong>Dirt</strong> block (from your inventory) in the slot after <img alt="&lt;&gt;?" src="textures/vbots_neq_check.png" />.<br />
+If the block ahead is NOT dirt → dig it and move forward.<br />
+If it IS dirt (or dirt_with_grass) → just move forward (skip digging).</p>
+</blockquote>
+<h3>Example 4: Mine Until Stone, Then Stop</h3>
+<p>Mine forward in a loop, but stop when you hit stone:</p>
+<p><img alt="=?" src="textures/vbots_eq_check.png" />
++ [Stone item]
+<img alt="END" src="textures/vbots_end_program.png" />
+<img alt="dig" src="textures/vbots_mode_dig.png" />
+<img alt="forward" src="textures/vbots_move_forward.png" />
+<img alt="home" src="textures/vbots_move_home.png" /></p>
+<blockquote>
+<p>Place a <strong>Stone</strong> block in the arg slot after <img alt="=?" src="textures/vbots_eq_check.png" />. With this looped program, the bot:
+</p>
+</blockquote>
+<ul>
+<li>
+<p>If ahead IS stone → hits END and stops forever</p>
+<blockquote></blockquote>
+</li>
+<li>
+<p>If ahead is NOT stone → <strong>skips</strong> END, digs, moves forward, goes home (loop continues)</p>
+</li>
+</ul>
+<h3>Example 5: Find Block, Then Dig</h3>
+<p><img alt="=?" src="textures/vbots_eq_check.png" /> + [Stone] <img alt="dig" src="textures/vbots_mode_dig.png" /> <img alt="forward" src="textures/vbots_move_forward.png" />
+→ If stone ahead: dig it and move forward. Otherwise: just move forward.</p>
+<h3>Example 6: Take From Chest</h3>
+<p><img alt="dig?" src="textures/vbots_dig_check.png" /> + [Stone] <img alt="dig" src="textures/vbots_mode_dig.png" /> <img alt="forward" src="textures/vbots_move_forward.png" />
+→ If chest ahead has stone: take one stone (bot stays in place, chest blocks movement). Otherwise: just move forward.</p>
+<h3>Example 7: Count &amp; Compare</h3>
+<p><img alt="A" src="textures/vbots_var_a.png" /> <img alt="count" src="textures/vbots_count.png" /> + [Stone]
+<img alt="&gt;?" src="textures/vbots_gt_check.png" /> <img alt="x3" src="textures/vbots_number_3.png" /> <img alt="END" src="textures/vbots_end_program.png" />
+<img alt="forward" src="textures/vbots_move_forward.png" />
+→ Count stone in inventory → var_a. If var_a &gt; 3: stop. Otherwise: move forward.</p>
+<h3>Example 8: Read Sign, Multiply</h3>
+<p><img alt="read" src="textures/vbots_sign_read.png" /> <img alt="B" src="textures/vbots_var_b.png" />
+<img alt="forward" src="textures/vbots_move_forward.png" /> <img alt="B" src="textures/vbots_var_b.png" />
+→ Read number from sign ahead into var_b. Move forward var_b times.</p>
+<h3>Example 9: Inventory Dump</h3>
+<p><img alt="build" src="textures/vbots_mode_build.png" />
+→ If chest is <strong>ahead</strong>: transfers first item from inventory.<br />
+→ <img alt="build" src="textures/vbots_mode_build.png" /> + [Stone]: transfers one stone to chest.<br />
+→ If no chest ahead: places a block behind the bot.</p>
+<hr />
+<h2>Based On</h2>
+<p>This mod is based on <strong><a href="https://content.luanti.org/packages/Nigel/vbots/">visual-bots</a></strong> (© 2019 Nigel Garnett).<br />
+Extended with conditional commands, chest interaction, variables, and various fixes.</p></html>
