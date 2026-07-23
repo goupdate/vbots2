@@ -910,6 +910,7 @@ end
                 end
         else
             -- no path: retry next tick
+            vbots2.log(meta:get_string("name"), "no path: retrying")
             meta:set_int("PC", PC - 1)
             return
         end
