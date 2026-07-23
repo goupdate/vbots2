@@ -209,9 +209,7 @@ local function position_bot(pos,newpos)
             if hold then
                 minetest.get_meta(newpos):from_table(hold)
             end
-            minetest.after(0.06, function()
-                minetest.set_node(pos,{name="air"})
-            end)
+            minetest.set_node(pos,{name="air"})
         else
             minetest.sound_play("error",{pos = newpos, gain = 10})
         end
@@ -836,13 +834,15 @@ local function bot_parsecommand(pos,item)
         local dy = math.abs(pos.y - round_pos.y)
         local dz = math.abs(pos.z - round_pos.z)
         if dx <= 1 and dy <= 1 and dz <= 1 and (dx + dy + dz) > 0 then
-            -- at goal: set retry timer, wait 5s before recalculating
             local retry_time = meta:get_float("nav_retry")
             local now = minetest.get_gametime()
             if retry_time == 0 then
                 meta:set_float("nav_retry", now)
+                meta:set_int("PC", PC - 1)
+                return
             elseif now - retry_time >= 5 then
                 meta:set_float("nav_retry", 0)
+                return -- done waiting, advance to next command
             end
             meta:set_int("PC", PC - 1)
             return
@@ -941,6 +941,7 @@ local function bot_parsecommand(pos,item)
             elseif now - retry_time >= 5 then
                 meta:set_float("nav_retry", 0)
                 meta:set_string("nav_path", "")
+                return -- give up, advance to next command
             end
             meta:set_int("PC", PC - 1)
             return
@@ -1097,7 +1098,7 @@ local function bot_handletimer(pos)
     end
     -- sync state indicator above bot head
     if bi and bi.state_marker then
-        bi.state_marker:set_pos({x = pos.x, y = pos.y + 1.2, z = pos.z})
+        bi.state_marker:set_pos({x = pos.x, y = pos.y + 0.55, z = pos.z})
         local state_tex = "blank.png"
         local node = minetest.get_node(pos)
         if node.name == "vbots2:off" then
@@ -1283,9 +1284,9 @@ not_in_creative_inventory = 1,
 minetest.register_entity("vbots2:minimap_marker", {
     initial_properties = {
         visual = "sprite",
-        visual_size = {x = 0.4, y = 0.4},
+        visual_size = {x = 0, y = 0, z = 0},
         textures = {"vbots_marker_on.png"},
-        glow = 14,
+        glow = 0,
         physical = false,
         collide_with_objects = false,
         pointable = false,
@@ -1344,9 +1345,9 @@ minetest.register_entity("vbots2:bot_body", {
 minetest.register_entity("vbots2:state_marker", {
     initial_properties = {
         visual = "sprite",
-        visual_size = {x = 0.5, y = 0.5},
+        visual_size = {x = 0.3, y = 0.3},
         textures = {"blank.png"},
-        glow = 14,
+        glow = 0,
         physical = false,
         collide_with_objects = false,
         pointable = false,

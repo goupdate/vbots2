@@ -68,7 +68,7 @@ vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
     vbots2.bot_info[bot_key].marker = marker
     local body = minetest.add_entity(pos, "vbots2:bot_body")
     vbots2.bot_info[bot_key].body = body
-    local state_pos = {x = pos.x, y = pos.y + 1.2, z = pos.z}
+    local state_pos = {x = pos.x, y = pos.y + 0.55, z = pos.z}
     local state_marker = minetest.add_entity(state_pos, "vbots2:state_marker")
     vbots2.bot_info[bot_key].state_marker = state_marker
         meta:set_string("infotext", bot_name .. " (" .. bot_owner .. ")")
@@ -90,7 +90,7 @@ vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
     local marker_pos = {x = pos.x, y = pos.y + 0.5, z = pos.z}
     local marker = minetest.add_entity(marker_pos, "vbots2:minimap_marker")
     vbots2.bot_info[bot_key].marker = marker
-    local state_pos = {x = pos.x, y = pos.y + 1.2, z = pos.z}
+    local state_pos = {x = pos.x, y = pos.y + 0.55, z = pos.z}
     local state_marker = minetest.add_entity(state_pos, "vbots2:state_marker")
     vbots2.bot_info[bot_key].state_marker = state_marker
     local meta = minetest.get_meta(pos)
