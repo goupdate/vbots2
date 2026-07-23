@@ -41,14 +41,13 @@ end
 -------------------------------------
 local function panel_commands()
     local commands = {
-        {"move_forward","move_backward","move_down","move_home"},
+        {"move_forward","move_backward","move_down","move_home","go_player"},
         {"turn_clockwise","turn_anticlockwise","turn_random"},
         {"mode_dig_up","mode_dig","mode_dig_down","mode_build_up","mode_build","mode_build_down"},
         {"var_a","var_b","var_c","var_d","sign_read","sign_print","count"},
         {"eq_check","neq_check","dig_check","gt_check","lt_check","gte_check","lte_check","end_program"},
         {"mode_speed","number_2","number_3","number_4","number_5","number_6","number_7"},
         {"f1","f2","f3","f4","f5","f6"},
-        {"go_player"},
         {"redstone_toggle"},
         {"goto_pos"}
     }

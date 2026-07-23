@@ -17,6 +17,8 @@ local trashInv = minetest.create_detached_inventory(
                     })
 trashInv:set_size("main", 1)
 mod_storage = minetest.get_mod_storage()
+-- world-unique prefix for save isolation
+local world_name = minetest.get_worldpath():match("([^\\/]+)$") or "unknown"
 
 local function bot_namer()
     local first = {
@@ -166,7 +168,7 @@ vbots2.save = function(pos)
             end
         end
     end
-    mod_storage:set_string(name..",vbotsep,"..botname,minetest.serialize(inv_list))
+    mod_storage:set_string(world_name..",vbotsep,"..name..",vbotsep,"..botname,minetest.serialize(inv_list))
 end
 
 vbots2.load = function(pos,player,mode)
@@ -178,8 +180,8 @@ vbots2.load = function(pos,player,mode)
     local parts
     for n,d in pairs(data) do
         parts = string.split(n,",vbotsep,")
-        if #parts == 2 and parts[1] == player:get_player_name() then
-            bot_list = bot_list..parts[2]..","
+        if #parts == 3 and parts[1] == world_name and parts[2] == player:get_player_name() then
+            bot_list = bot_list..parts[3]..","
         end
     end
     bot_list = bot_list:sub(1,#bot_list-1)

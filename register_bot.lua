@@ -871,8 +871,21 @@ local function bot_parsecommand(pos,item)
                     bot_turn_anticlockwise(pos)
                 end
 
-                -- stay on this command for next step
-                meta:set_int("PC", PC - 1)
+                -- stay on this command for next step (update NEW meta)
+                local newpos = pos
+                if act == "f" then
+                    local nd = minetest.get_node(pos)
+                    local ndir = minetest.facedir_to_dir(nd.param2)
+                    newpos = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
+                elseif act == "d" then
+                    newpos = {x = pos.x, y = pos.y - 1, z = pos.z}
+                elseif act == "j" then
+                    local nd = minetest.get_node(pos)
+                    local ndir = minetest.facedir_to_dir(nd.param2)
+                    newpos = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
+                end
+                local newmeta = minetest.get_meta(newpos)
+                newmeta:set_int("PC", PC - 1)
                 return
             end
         end
@@ -903,7 +916,21 @@ local function bot_parsecommand(pos,item)
                     bot_turn_anticlockwise(pos)
                 end
 
-                meta:set_int("PC", PC - 1)
+                -- stay on this command for next step (update NEW meta)
+                local newpos2 = pos
+                if act == "f" then
+                    local nd = minetest.get_node(pos)
+                    local ndir = minetest.facedir_to_dir(nd.param2)
+                    newpos2 = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
+                elseif act == "d" then
+                    newpos2 = {x = pos.x, y = pos.y - 1, z = pos.z}
+                elseif act == "j" then
+                    local nd = minetest.get_node(pos)
+                    local ndir = minetest.facedir_to_dir(nd.param2)
+                    newpos2 = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
+                end
+                local newmeta2 = minetest.get_meta(newpos2)
+                newmeta2:set_int("PC", PC - 1)
             end
         else
             -- no path: wait 5s and retry
@@ -958,7 +985,13 @@ local function bot_parsecommand(pos,item)
                 elseif act == "cw" then bot_turn_clockwise(pos)
                 elseif act == "ccw" then bot_turn_anticlockwise(pos)
                 end
-                meta:set_int("PC", PC)
+                -- update PC on new meta (position_bot copies meta before move)
+                local np = pos
+                if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
+                elseif act == "d" then np = {x = pos.x, y = pos.y - 1, z = pos.z}
+                elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
+                end
+                minetest.get_meta(np):set_int("PC", PC)
                 return
             end
         end
@@ -981,7 +1014,13 @@ local function bot_parsecommand(pos,item)
                 elseif act == "cw" then bot_turn_clockwise(pos)
                 elseif act == "ccw" then bot_turn_anticlockwise(pos)
                 end
-                meta:set_int("PC", PC)
+                -- update PC on new meta
+                local np2 = pos
+                if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np2 = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
+                elseif act == "d" then np2 = {x = pos.x, y = pos.y - 1, z = pos.z}
+                elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np2 = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
+                end
+                minetest.get_meta(np2):set_int("PC", PC)
             end
         end
     elseif item == "vbots2:redstone_toggle" then
