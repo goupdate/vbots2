@@ -34,6 +34,48 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
             if fields.reset then
                 vbots2.wipe_programs(bot_data.pos)
             end
+            if fields.removeall then
+                local pname = player:get_player_name()
+                local now = minetest.get_gametime()
+                vbots2.removeall_last = vbots2.removeall_last or {}
+                local last = vbots2.removeall_last[pname]
+                if last and (now - last) <= 2 then
+                    -- second press: destroy all player's bots
+                    local to_remove = {}
+                    for k, v in pairs(vbots2.bot_info) do
+                        if v.owner == pname then
+                            table.insert(to_remove, {key = k, pos = v.pos, name = v.name})
+                        end
+                    end
+                    for _, bot in ipairs(to_remove) do
+                        vbots2.bot_info[bot.key] = nil
+                        minetest.set_node(bot.pos, {name = "air"})
+                    end
+                    vbots2.removeall_last[pname] = nil
+                    minetest.chat_send_player(pname,
+                        "[vbots2] Removed " .. #to_remove .. " bot(s).")
+                else
+                    -- first press (or timer reset): stop all player's bots
+                    local stopped = {}
+                    for k, v in pairs(vbots2.bot_info) do
+                        if v.owner == pname then
+                            local node = minetest.get_node(v.pos)
+                            if node.name == "vbots2:on" then
+                                vbots2.bot_togglestate(v.pos, "off")
+                                table.insert(stopped, v.name .. " (" ..
+                                    v.pos.x .. "," .. v.pos.y .. "," .. v.pos.z .. ")")
+                            end
+                        end
+                    end
+                    minetest.chat_send_player(pname,
+                        "[vbots2] All bots stopped. Press again within 2s to REMOVE.")
+                    if #stopped > 0 then
+                        minetest.log("action", "[vbots2] " .. pname .. " stopped: " ..
+                            table.concat(stopped, ", "))
+                    end
+                    vbots2.removeall_last[pname] = now
+                end
+            end
             if fields.quit=="true" then
                 return
             end

@@ -79,14 +79,16 @@ end
 -- Main panel generator
 -------------------------------------
 local function panel_code(pos,program)
-    return button(9,0,"vbots_gui_run.png","run",true)
-           --..button(11,0,"vbots_gui_check.png","check")
-           ..button(14,0,"vbots_gui_nuke.png","reset")
-           ..button(11,0,"vbots_gui_load.png","load",true)
-           ..button(12,0,"vbots_gui_save.png","save",true)
-           ..highlight(9,0,1,1,"5","5","f")
-           ..highlight(14,0,1,1,"5","5","f")
-           ..highlight(11,0,2,1,"5","5","f")
+return button(9,0,"vbots_gui_run.png","run",true)
+        --..button(11,0,"vbots_gui_check.png","check")
+        ..button(13,0,"vbots_gui_nuke.png","removeall")
+        .."tooltip[13,0;1,1;Stop/Remove all your bots]"
+        ..button(14,0,"vbots_gui_reset.png","reset")
+        ..button(11,0,"vbots_gui_load.png","load",true)
+        ..button(12,0,"vbots_gui_save.png","save",true)
+        ..highlight(9,0,1,1,"5","5","f")
+        ..highlight(13,0,2,1,"5","5","f")
+        ..highlight(11,0,2,1,"5","5","f")
 
            ..button(15,0,"vbots_gui_exit.png","exit",true)
            ..highlight(15,0,1,1,"f","0","0")

@@ -48,7 +48,8 @@ The **inventory panel** shows the bot's inventory (top) and the player's invento
 | ![run](textures/vbots_gui_run.png) **Run** | Starts the program (same as punching with empty hand) |
 | ![save](textures/vbots_gui_save.png) **Save** | Saves the current program and sub-programs under the bot's name |
 | ![load](textures/vbots_gui_load.png) **Load** | Opens the load menu to choose, rename, or delete saved programs |
-| ![reset](textures/vbots_gui_nuke.png) **Reset** | Clears all programs (main + sub-programs) but keeps the inventory |
+| ![removeall](textures/vbots_gui_nuke.png) **Remove All** | 1st press: stop all your bots. 2nd press (within 2s): destroy all your bots |
+| ![reset](textures/vbots_gui_reset.png) **Reset** | Clears all programs (main + sub-programs) but keeps the inventory |
 | ![exit](textures/vbots_gui_exit.png) **Exit** | Closes the menu |
 
 ### Sub-Programs
