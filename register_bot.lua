@@ -1074,7 +1074,6 @@ local function bot_handletimer(pos)
 
     -- stay on nav command if bot is pathfinding
     if meta:get_int("nav_active") == 1 then
-        PC = meta:get_int("nav_pc")
         PR = meta:get_int("nav_pr")
     end
 
