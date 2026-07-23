@@ -18,3 +18,9 @@ git commit -m "Brief description in English"
 
 - One commit per logical group of changes
 - Message in English, short (≤72 chars), imperative mood (e.g. "add go_player command with A* pathfinding")
+
+### ALWAYS run a linter agent BEFORE committing.
+
+- Launch `task(category="quick", description="Lint check", prompt="Read all changed Lua files, check for: syntax errors, unbalanced if/end blocks, undefined variables, logic bugs. Check READMEs for consistency with code. Report: OK or list of issues.")`
+- Fix any blocking issues before commit
+- Only commit after linter passes

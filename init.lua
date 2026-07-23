@@ -64,6 +64,8 @@ vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
     local marker_pos = {x = pos.x, y = pos.y + 0.5, z = pos.z}
     local marker = minetest.add_entity(marker_pos, "vbots2:minimap_marker")
     vbots2.bot_info[bot_key].marker = marker
+    local body = minetest.add_entity(pos, "vbots2:bot_body")
+    vbots2.bot_info[bot_key].body = body
         meta:set_string("infotext", bot_name .. " (" .. bot_owner .. ")")
         --print(dump(vbots2.bot_info))
     end
@@ -77,7 +79,12 @@ vbots2.bot_init = function(pos, placer)
     local bot_owner = placer:get_player_name()
     local bot_name = bot_namer()
     local bot_key = vbots2.get_key()
-    vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
+vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
+    local body = minetest.add_entity(pos, "vbots2:bot_body")
+    vbots2.bot_info[bot_key].body = body
+    local marker_pos = {x = pos.x, y = pos.y + 0.5, z = pos.z}
+    local marker = minetest.add_entity(marker_pos, "vbots2:minimap_marker")
+    vbots2.bot_info[bot_key].marker = marker
     local meta = minetest.get_meta(pos)
 	meta:set_string("infotext", bot_name .. " (" .. bot_owner .. ")")
     local inv = meta:get_inventory()

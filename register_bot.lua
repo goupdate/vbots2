@@ -140,6 +140,19 @@ local function position_bot(pos,newpos)
         minetest.close_formspec(bot_owner, bot_key)
     end
     if not minetest.is_protected(newpos, bot_owner) then
+        -- ram: deal max damage to mobs at destination
+        local mobs = minetest.get_objects_inside_radius(newpos, 0.8)
+        for _, obj in ipairs(mobs) do
+            if obj and obj:get_luaentity() then
+                local ent = obj:get_luaentity()
+                -- punch mobs (skip items and players)
+                if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
+                        and ent.name ~= "vbots2:bot_body"
+                        and obj ~= player then
+                    obj:punch(obj, 1.0, {full_punch_interval = 0.1, damage_groups = {fleshy = 100}}, nil)
+                end
+            end
+        end
         local moveto_node = minetest.get_node(newpos)
         -- cut plants on the way
         local is_plant = false
@@ -260,6 +273,33 @@ if not minetest.is_protected(digpos, bot_owner) then
         local drop = minetest.get_node(digpos)
         if drop.name ~= "air" then
             local ndef = minetest.registered_nodes[drop.name]
+            local is_bot = drop.name:find("^vbots2:")
+            if is_bot then
+                -- take items from another bot
+                local bot_inv = minetest.get_inventory({type="node", pos=digpos})
+                if bot_inv then
+                    local inv = minetest.get_inventory({type="node", pos=pos})
+                    local PC = meta:get_int("PC")
+                    local PR = meta:get_int("PR")
+                    local filter = inv:get_stack("p"..PR, PC):get_name()
+                    local taken = false
+                    local bot_list = bot_inv:get_list("main")
+                    for i = 1, #bot_list do
+                        local stack = bot_list[i]
+                        if not stack:is_empty() then
+                            if filter == "" or stack:get_name() == filter then
+                                bot_add_items(inv, "main", stack)
+                                bot_inv:set_stack("main", i, ItemStack(nil))
+                                taken = true
+                                break
+                            end
+                        end
+                    end
+                    if not taken then
+                        minetest.sound_play("system-fault",{pos = digpos, gain = 10})
+                    end
+                end
+            else
             local is_container = ndef and ndef.groups and ndef.groups.container
             if is_container then
                 local chest_inv = minetest.get_inventory({type="node", pos=digpos})
@@ -305,8 +345,9 @@ if not minetest.is_protected(digpos, bot_owner) then
                 minetest.set_node(digpos,{name="air"})
             end
         end
+    end
     else
-        minetest.sound_play("system-fault",{pos = newpos, gain = 10})
+        minetest.sound_play("system-fault",{pos = digpos, gain = 10})
     end
 end
 
@@ -319,9 +360,9 @@ local function bot_build(pos, buildy, filter)
     local front_pos = {x = pos.x - dir.x, y = pos.y, z = pos.z - dir.z}
     local front_node = minetest.get_node(front_pos)
 
-    -- check ahead for chest transfer first
-    local ndef = minetest.registered_nodes[front_node.name]
-    if ndef and ndef.groups and ndef.groups.container then
+    -- check ahead for bot or chest transfer first
+    local is_bot = front_node.name:find("^vbots2:")
+    if is_bot or (ndef and ndef.groups and ndef.groups.container) then
         if not minetest.is_protected(front_pos, bot_owner) then
             local chest_inv = minetest.get_inventory({type="node", pos=front_pos})
             if chest_inv then
@@ -945,6 +986,9 @@ local function bot_handletimer(pos)
         local tex = (meta:get_float("nav_retry") > 0) and "vbots_marker_wait.png" or "vbots_marker_on.png"
         bi.marker:set_properties({textures = {tex}})
     end
+    if bi and bi.body then
+        bi.body:set_pos({x = pos.x, y = pos.y + 0.5, z = pos.z})
+    end
 
     local inv = meta:get_inventory()
     local PC = meta:get_int("PC")
@@ -1067,22 +1111,13 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
             if bi and bi.marker then
                 bi.marker:remove()
             end
+            if bi and bi.body then
+                bi.body:remove()
+            end
             vbots2.bot_info[bot_key] = nil
-            clean_bot_table()
+clean_bot_table()
         end
 })
-
--------------------------------------
--- Mesecon integration: turn bot on by redstone
--------------------------------------
-if minetest.get_modpath("mesecons") then
-    mesecon.register_effector("vbots2:off", "vbots2:on", {
-        action_on = function(pos)
-            vbots2.bot_togglestate(pos, "on")
-        end,
-    })
-end
-end
 
 register_bot("vbots2:off", "Inactive Vbot", {
             "vbots_turtle_top.png",
@@ -1130,5 +1165,49 @@ minetest.register_entity("vbots2:minimap_marker", {
     },
     on_activate = function(self)
         self.object:set_armor_groups({immortal = 1})
+    end,
+})
+
+-------------------------------------
+-- Bot body entity (mob combat)
+-------------------------------------
+minetest.register_entity("vbots2:bot_body", {
+    initial_properties = {
+        physical = true,
+        collide_with_objects = true,
+        collisionbox = {-0.3, -0.5, -0.3, 0.3, 1.5, 0.3},
+        visual = "cube",
+        visual_size = {x = 0.6, y = 1.5, z = 0.6},
+        textures = {"vbots_turtle_top.png", "vbots_turtle_bottom.png",
+                    "vbots_turtle_right.png", "vbots_turtle_left.png",
+                    "vbots_turtle_tail.png", "vbots_turtle_face.png"},
+        hp_max = 20,
+        -- Mobs target entities with type="npc" (monsters don't attack other monsters)
+    },
+    type = "npc",
+    on_activate = function(self, staticdata)
+        self.object:set_armor_groups({fleshy = 100})
+        self.object:set_hp(20)
+    end,
+    on_punch = function(self, puncher, time_from_last_punch, tool_capabilities, dir, damage)
+        if not damage then return end
+        local hp = self.object:get_hp() - damage
+        if hp <= 0 then
+            -- bot destroyed — destroy the node
+            local pos = self.object:get_pos()
+            if pos then
+                pos = {x = math.floor(pos.x + 0.5), y = math.floor(pos.y), z = math.floor(pos.z + 0.5)}
+                local node = minetest.get_node(pos)
+                if node.name:find("^vbots2:") then
+                    minetest.set_node(pos, {name = "air"})
+                end
+            end
+            self.object:remove()
+        else
+            self.object:set_hp(hp)
+        end
+    end,
+    on_death = function(self)
+        -- handled by on_punch
     end,
 })
