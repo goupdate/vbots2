@@ -807,9 +807,12 @@ local function bot_parsecommand(pos,item)
         local PC = meta:get_int("PC")
 
         if not player then
-            -- player offline: skip command
             return
         end
+        -- mark navigation active so handletimer stays on this command
+        meta:set_int("nav_active", 1)
+        meta:set_int("nav_pc", meta:get_int("PC"))
+        meta:set_int("nav_pr", meta:get_int("PR"))
 
         local player_pos = player:get_pos()
         if not player_pos then
@@ -838,12 +841,15 @@ local function bot_parsecommand(pos,item)
             local now = minetest.get_gametime()
             if retry_time == 0 then
                 meta:set_float("nav_retry", now)
+                meta:set_int("nav_active", 0)
                 meta:set_int("PC", PC - 1)
                 return
             elseif now - retry_time >= 5 then
                 meta:set_float("nav_retry", 0)
+                meta:set_int("nav_active", 0)
                 return -- done waiting, advance to next command
             end
+            meta:set_int("nav_active", 0)
             meta:set_int("PC", PC - 1)
             return
         end
@@ -871,21 +877,6 @@ local function bot_parsecommand(pos,item)
                     bot_turn_anticlockwise(pos)
                 end
 
-                -- stay on this command for next step (update NEW meta)
-                local newpos = pos
-                if act == "f" then
-                    local nd = minetest.get_node(pos)
-                    local ndir = minetest.facedir_to_dir(nd.param2)
-                    newpos = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
-                elseif act == "d" then
-                    newpos = {x = pos.x, y = pos.y - 1, z = pos.z}
-                elseif act == "j" then
-                    local nd = minetest.get_node(pos)
-                    local ndir = minetest.facedir_to_dir(nd.param2)
-                    newpos = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
-                end
-                local newmeta = minetest.get_meta(newpos)
-                newmeta:set_int("PC", PC - 1)
                 return
             end
         end
@@ -914,24 +905,9 @@ local function bot_parsecommand(pos,item)
                     bot_turn_clockwise(pos)
                 elseif act == "ccw" then
                     bot_turn_anticlockwise(pos)
-                end
+end
 
-                -- stay on this command for next step (update NEW meta)
-                local newpos2 = pos
-                if act == "f" then
-                    local nd = minetest.get_node(pos)
-                    local ndir = minetest.facedir_to_dir(nd.param2)
-                    newpos2 = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
-                elseif act == "d" then
-                    newpos2 = {x = pos.x, y = pos.y - 1, z = pos.z}
-                elseif act == "j" then
-                    local nd = minetest.get_node(pos)
-                    local ndir = minetest.facedir_to_dir(nd.param2)
-                    newpos2 = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
                 end
-                local newmeta2 = minetest.get_meta(newpos2)
-                newmeta2:set_int("PC", PC - 1)
-            end
         else
             -- no path: wait 5s and retry
             local retry_time = meta:get_float("nav_retry")
@@ -1096,24 +1072,6 @@ local function bot_handletimer(pos)
     if bi and bi.body then
         bi.body:set_pos({x = pos.x, y = pos.y + 0.5, z = pos.z})
     end
-    -- sync state indicator above bot head
-    if bi and bi.state_marker then
-        bi.state_marker:set_pos({x = pos.x, y = pos.y + 0.5, z = pos.z})
-        local state_tex = "blank.png"
-        local node = minetest.get_node(pos)
-        if node.name == "vbots2:off" then
-            local st = meta:get_float("state_stop_time")
-            if st > 0 and minetest.get_gametime() - st < 2 then
-                state_tex = "vbots_state_stop.png"
-            else
-                meta:set_float("state_stop_time", 0)
-            end
-        end
-        if meta:get_float("nav_retry") > 0 then
-            state_tex = "vbots_state_search.png"
-        end
-        bi.state_marker:set_properties({textures = {state_tex}})
-    end
 
     local inv = meta:get_inventory()
     local PC = meta:get_int("PC")
@@ -1121,12 +1079,21 @@ local function bot_handletimer(pos)
     local invname = "p"..PR
     local stack = meta:get_string("stack")
 
+    -- stay on nav command if bot is pathfinding
+    if meta:get_int("nav_active") == 1 then
+        PC = meta:get_int("nav_pc")
+        PR = meta:get_int("nav_pr")
+    end
+
     local taken = inv:get_stack(invname, PC)
     local command = taken:get_name()
 
     local todo = meta:get_int("repeat")
     if todo == 0 then
-        PC=PC+1
+        -- only advance PC if not navigating
+        if meta:get_int("nav_active") ~= 1 then
+            PC = PC + 1
+        end
         while(command == "" and PC<57) do
             taken = inv:get_stack(invname, PC)
             command = taken:get_name()
@@ -1239,9 +1206,6 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
             if bi and bi.body then
                 bi.body:remove()
             end
-            if bi and bi.state_marker then
-                bi.state_marker:remove()
-            end
             vbots2.bot_info[bot_key] = nil
 clean_bot_table()
         end
@@ -1336,24 +1300,5 @@ minetest.register_entity("vbots2:bot_body", {
     end,
     on_death = function(self)
         -- handled by on_punch
-    end,
-})
-
--------------------------------------
--- State indicator entity (above bot head)
--------------------------------------
-minetest.register_entity("vbots2:state_marker", {
-    initial_properties = {
-        visual = "sprite",
-        visual_size = {x = 0, y = 0, z = 0},
-        textures = {""},
-        glow = 0,
-        physical = false,
-        collide_with_objects = false,
-        pointable = false,
-        static_save = false,
-    },
-    on_activate = function(self)
-        self.object:set_armor_groups({immortal = 1})
     end,
 })
