@@ -78,12 +78,11 @@ Call sub-programs using the function icons at the bottom of the command panel.
 |------|---------|-------------|
 | ![forward](textures/vbots_move_forward.png) | Move Forward | Move one step forward |
 | ![backward](textures/vbots_move_backward.png) | Move Backward | Move one step backward |
-| ![up](textures/vbots_move_up.png) | Move Up | Move one step up |
 | ![down](textures/vbots_move_down.png) | Move Down | Move one step down |
 | ![home](textures/vbots_move_home.png) | Go Home | Teleport back to the position where the bot was placed |
 | ![go_player](textures/vbots_go_player.png) | Go to Player | Pathfind to owner player, stop 1 block away |
 
-Movement fails if the destination is not empty.
+Movement fails if the destination is not empty. **Gravity:** the bot falls automatically if the block below is air (no flying).
 
 ### Turning
 

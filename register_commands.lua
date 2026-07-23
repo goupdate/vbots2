@@ -19,7 +19,6 @@ end
 
 register_command("move_forward","Move bot forward","vbots_move_forward.png")
 register_command("move_backward","Move bot backward","vbots_move_backward.png")
-register_command("move_up","Move bot up","vbots_move_up.png")
 register_command("move_down","Move bot down","vbots_move_down.png")
 register_command("move_home","Move bot to start position","vbots_move_home.png")
 

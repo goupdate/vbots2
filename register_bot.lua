@@ -465,8 +465,6 @@ local function bot_parsecommand(pos,item)
         move_bot(pos,"f")
     elseif item == "vbots2:move_backward" then
         move_bot(pos,"b")
-    elseif item == "vbots2:move_up" then
-        move_bot(pos,"u")
     elseif item == "vbots2:move_down" then
         move_bot(pos,"d")
     elseif item == "vbots2:move_home" then
@@ -496,7 +494,7 @@ local function bot_parsecommand(pos,item)
         move_bot(pos,"d")
     elseif item == "vbots2:mode_dig_up" then
         bot_dig(pos,1)
-        move_bot(pos,"u")
+        -- dig only, no move (bot must not fly)
     elseif item == "vbots2:mode_build" then
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
@@ -809,6 +807,15 @@ end
 local function bot_handletimer(pos)
     bot_pickup_items(pos)
     local meta = minetest.get_meta(pos)
+
+    -- gravity: fall if no block below
+    local below = {x = pos.x, y = pos.y - 1, z = pos.z}
+    if minetest.get_node(below).name == "air" then
+        move_bot(pos, "d")
+        meta:set_string("nav_path", "")  -- invalidate cached path
+        return true
+    end
+
     local inv = meta:get_inventory()
     local PC = meta:get_int("PC")
     local PR = meta:get_int("PR")
