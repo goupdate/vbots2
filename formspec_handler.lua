@@ -112,11 +112,14 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
             end
             if fields.goto_pos then
                 local formname = "gotocoords," .. bot_key
+                local ppos = player:get_pos()
+                local px, py, pz = math.floor(ppos.x + 0.5), math.floor(ppos.y), math.floor(ppos.z + 0.5)
                 local fs = "size[5,4]" ..
-                    "field[0.5,0.3;4,1;gotox;X;]" ..
-                    "field[0.5,1.3;4,1;gotoy;Y;]" ..
-                    "field[0.5,2.3;4,1;gotoz;Z;]" ..
-                    "button_exit[1,3.3;3,1;okgo;Set & Insert]"
+                    "label[0.5,0.1;Your position: " .. px .. "," .. py .. "," .. pz .. "]" ..
+                    "field[0.5,0.8;4,1;gotox;X;]" ..
+                    "field[0.5,1.8;4,1;gotoy;Y;]" ..
+                    "field[0.5,2.8;4,1;gotoz;Z;]" ..
+                    "button_exit[1,3.8;3,1;okgo;Set & Insert]"
                 minetest.after(0.1, minetest.show_formspec, player:get_player_name(), formname, fs)
             end
             if not fields.exit and not fields.run then
