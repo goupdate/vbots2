@@ -146,13 +146,15 @@ local function position_bot(pos,newpos)
             local hold = meta:to_table()
             -- prevent on_destruct from dropping inventory during move
             meta:set_string("moving", "1")
-            local elapsed = minetest.get_node_timer(pos):get_elapsed()
-            minetest.set_node(pos,{name="air"})
+            -- smooth: place new node first, then remove old after brief overlap
             minetest.set_node(newpos,{name=node.name, param2=node.param2})
             minetest.get_node_timer(newpos):set(1/R,0)
             if hold then
                 minetest.get_meta(newpos):from_table(hold)
             end
+            minetest.after(0.06, function()
+                minetest.set_node(pos,{name="air"})
+            end)
         else
             minetest.sound_play("error",{pos = newpos, gain = 10})
         end
@@ -332,7 +334,7 @@ local function bot_build(pos, buildy, filter)
 end
 
 -------------------------------------
--- BFS pathfinding to player
+-- A* pathfinding to player
 -------------------------------------
 local facedirs = {
     {x=0, z=1},   -- 0: south
@@ -353,27 +355,43 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
         return pos.x .. "," .. pos.y .. "," .. pos.z .. "," .. facing
     end
 
-    -- queue: {{pos, facing, actions_list}}
-    local queue = {{pos = bot_pos, facing = bot_facing, actions = {}}}
+    -- heuristic: max(horizontal, vertical)
+    local function h(pos)
+        return math.max(
+            math.abs(pos.x - player_pos.x) + math.abs(pos.z - player_pos.z),
+            math.abs(pos.y - player_pos.y)
+        )
+    end
+
+    -- priority queue sorted by f = g + h, lowest first
+    local open = {}
+    local function push(state)
+        state.f = state.g + state.h
+        -- insert sorted by f
+        local i = 1
+        while i <= #open and open[i].f <= state.f do
+            i = i + 1
+        end
+        table.insert(open, i, state)
+    end
+
+    push({pos = bot_pos, facing = bot_facing, g = 0, h = h(bot_pos), actions = {}})
     visited[key(bot_pos, bot_facing)] = true
-    local head = 1
 
-    while head <= #queue do
-        local cur = queue[head]
-        head = head + 1
+    while #open > 0 do
+        local cur = table.remove(open, 1)
+        --------------------------------------------------------------------------
 
-        if #cur.actions >= max_steps then
-            goto continue_bfs
+        if cur.g >= max_steps then
+            goto continue_astar
         end
 
-        -- check goal: adjacent to player (1 block horizontal, same Y)
+        -- goal: adjacent to player (1 block horizontal, same Y)
         local dx = math.abs(cur.pos.x - player_pos.x)
         local dy = math.abs(cur.pos.y - player_pos.y)
         local dz = math.abs(cur.pos.z - player_pos.z)
         if (dx + dz) <= 1 and dy == 0 then
-            if #cur.actions == 0 then
-                return "done"
-            end
+            if #cur.actions == 0 then return "done" end
             return table.concat(cur.actions, ",")
         end
 
@@ -387,21 +405,21 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
             local a = {}
             for _, v in ipairs(cur.actions) do table.insert(a, v) end
             table.insert(a, "f")
-            table.insert(queue, {pos = fwd, facing = cur.facing, actions = a})
+            push({pos = fwd, facing = cur.facing, g = cur.g + 1, h = h(fwd), actions = a})
         end
 
-        -- move up
-        local up = {x = cur.pos.x, y = cur.pos.y + 1, z = cur.pos.z}
-        local uk = key(up, cur.facing)
-        if is_walkable(up) and not visited[uk] then
-            visited[uk] = true
+        -- jump forward (up + forward)
+        local jmp = {x = cur.pos.x - dir.x, y = cur.pos.y + 1, z = cur.pos.z - dir.z}
+        local jk = key(jmp, cur.facing)
+        if is_walkable(jmp) and not visited[jk] then
+            visited[jk] = true
             local a = {}
             for _, v in ipairs(cur.actions) do table.insert(a, v) end
-            table.insert(a, "u")
-            table.insert(queue, {pos = up, facing = cur.facing, actions = a})
+            table.insert(a, "j")
+            push({pos = jmp, facing = cur.facing, g = cur.g + 1, h = h(jmp), actions = a})
         end
 
-        -- move down
+        -- move down (fall)
         local dn = {x = cur.pos.x, y = cur.pos.y - 1, z = cur.pos.z}
         local dk = key(dn, cur.facing)
         if is_walkable(dn) and not visited[dk] then
@@ -409,7 +427,7 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
             local a = {}
             for _, v in ipairs(cur.actions) do table.insert(a, v) end
             table.insert(a, "d")
-            table.insert(queue, {pos = dn, facing = cur.facing, actions = a})
+            push({pos = dn, facing = cur.facing, g = cur.g + 1, h = h(dn), actions = a})
         end
 
         -- turn clockwise
@@ -420,7 +438,7 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
             local a = {}
             for _, v in ipairs(cur.actions) do table.insert(a, v) end
             table.insert(a, "cw")
-            table.insert(queue, {pos = cur.pos, facing = cwf, actions = a})
+            push({pos = cur.pos, facing = cwf, g = cur.g + 1, h = h(cur.pos), actions = a})
         end
 
         -- turn anticlockwise
@@ -431,10 +449,10 @@ local function find_path_to_player(bot_pos, bot_facing, player_pos)
             local a = {}
             for _, v in ipairs(cur.actions) do table.insert(a, v) end
             table.insert(a, "ccw")
-            table.insert(queue, {pos = cur.pos, facing = ccwf, actions = a})
+            push({pos = cur.pos, facing = ccwf, g = cur.g + 1, h = h(cur.pos), actions = a})
         end
 
-        ::continue_bfs::
+        ::continue_astar::
     end
 
     return nil -- no path found
@@ -698,8 +716,10 @@ local function bot_parsecommand(pos,item)
 
                 if act == "f" then
                     move_bot(pos, "f")
-                elseif act == "u" then
-                    move_bot(pos, "u")
+                elseif act == "j" then
+                    local jnode = minetest.get_node(pos)
+                    local jdir = minetest.facedir_to_dir(jnode.param2)
+                    position_bot(pos, {x = pos.x - jdir.x, y = pos.y + 1, z = pos.z - jdir.z})
                 elseif act == "d" then
                     move_bot(pos, "d")
                 elseif act == "cw" then
@@ -729,8 +749,10 @@ local function bot_parsecommand(pos,item)
 
                 if act == "f" then
                     move_bot(pos, "f")
-                elseif act == "u" then
-                    move_bot(pos, "u")
+                elseif act == "j" then
+                    local jnode = minetest.get_node(pos)
+                    local jdir = minetest.facedir_to_dir(jnode.param2)
+                    position_bot(pos, {x = pos.x - jdir.x, y = pos.y + 1, z = pos.z - jdir.z})
                 elseif act == "d" then
                     move_bot(pos, "d")
                 elseif act == "cw" then
