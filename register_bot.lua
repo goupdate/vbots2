@@ -1098,7 +1098,7 @@ local function bot_handletimer(pos)
     end
     -- sync state indicator above bot head
     if bi and bi.state_marker then
-        bi.state_marker:set_pos({x = pos.x, y = pos.y + 0.55, z = pos.z})
+        bi.state_marker:set_pos({x = pos.x, y = pos.y + 0.5, z = pos.z})
         local state_tex = "blank.png"
         local node = minetest.get_node(pos)
         if node.name == "vbots2:off" then
@@ -1345,8 +1345,8 @@ minetest.register_entity("vbots2:bot_body", {
 minetest.register_entity("vbots2:state_marker", {
     initial_properties = {
         visual = "sprite",
-        visual_size = {x = 0.3, y = 0.3},
-        textures = {"blank.png"},
+        visual_size = {x = 0, y = 0, z = 0},
+        textures = {""},
         glow = 0,
         physical = false,
         collide_with_objects = false,
