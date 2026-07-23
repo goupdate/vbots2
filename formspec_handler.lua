@@ -55,6 +55,9 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                         if bi and bi.body then
                             bi.body:remove()
                         end
+                        if bi and bi.state_marker then
+                            bi.state_marker:remove()
+                        end
                         vbots2.bot_info[bot.key] = nil
                         minetest.set_node(bot.pos, {name = "air"})
                     end

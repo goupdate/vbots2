@@ -1095,6 +1095,24 @@ local function bot_handletimer(pos)
     if bi and bi.body then
         bi.body:set_pos({x = pos.x, y = pos.y + 0.5, z = pos.z})
     end
+    -- sync state indicator above bot head
+    if bi and bi.state_marker then
+        bi.state_marker:set_pos({x = pos.x, y = pos.y + 1.2, z = pos.z})
+        local state_tex = "blank.png"
+        local node = minetest.get_node(pos)
+        if node.name == "vbots2:off" then
+            local st = meta:get_float("state_stop_time")
+            if st > 0 and minetest.get_gametime() - st < 2 then
+                state_tex = "vbots_state_stop.png"
+            else
+                meta:set_float("state_stop_time", 0)
+            end
+        end
+        if meta:get_float("nav_retry") > 0 then
+            state_tex = "vbots_state_search.png"
+        end
+        bi.state_marker:set_properties({textures = {state_tex}})
+    end
 
     local inv = meta:get_inventory()
     local PC = meta:get_int("PC")
@@ -1220,6 +1238,9 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
             if bi and bi.body then
                 bi.body:remove()
             end
+            if bi and bi.state_marker then
+                bi.state_marker:remove()
+            end
             vbots2.bot_info[bot_key] = nil
 clean_bot_table()
         end
@@ -1314,5 +1335,24 @@ minetest.register_entity("vbots2:bot_body", {
     end,
     on_death = function(self)
         -- handled by on_punch
+    end,
+})
+
+-------------------------------------
+-- State indicator entity (above bot head)
+-------------------------------------
+minetest.register_entity("vbots2:state_marker", {
+    initial_properties = {
+        visual = "sprite",
+        visual_size = {x = 0.5, y = 0.5},
+        textures = {"blank.png"},
+        glow = 14,
+        physical = false,
+        collide_with_objects = false,
+        pointable = false,
+        static_save = false,
+    },
+    on_activate = function(self)
+        self.object:set_armor_groups({immortal = 1})
     end,
 })
