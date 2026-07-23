@@ -24,3 +24,9 @@ git commit -m "Brief description in English"
 - Launch `task(category="quick", description="Lint check", prompt="Read all changed Lua files, check for: syntax errors, unbalanced if/end blocks, undefined variables, logic bugs. Check READMEs for consistency with code. Report: OK or list of issues.")`
 - Fix any blocking issues before commit
 - Only commit after linter passes
+
+### ALWAYS compress context after completing a task.
+
+- After each logical unit of work (bug fix, feature, README update), run `compress` to collapse the finished section
+- Keeps context window lean for the next task
+- One compress per logical group of changes

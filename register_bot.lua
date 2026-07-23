@@ -362,6 +362,7 @@ local function bot_build(pos, buildy, filter)
 
     -- check ahead for bot or chest transfer first
     local is_bot = front_node.name:find("^vbots2:")
+    local ndef = minetest.registered_nodes[front_node.name]
     if is_bot or (ndef and ndef.groups and ndef.groups.container) then
         if not minetest.is_protected(front_pos, bot_owner) then
             local chest_inv = minetest.get_inventory({type="node", pos=front_pos})
@@ -917,6 +918,72 @@ local function bot_parsecommand(pos,item)
             meta:set_int("PC", PC - 1)
             return
         end
+    elseif item == "vbots2:goto_pos" then
+        local PC = meta:get_int("PC")
+        local PR = meta:get_int("PR")
+        local inv = meta:get_inventory()
+        local smeta = inv:get_stack("p"..PR, PC):get_meta()
+        local tx = smeta:get_int("pos_x")
+        local ty = smeta:get_int("pos_y")
+        local tz = smeta:get_int("pos_z")
+        if tx == 0 and ty == 0 and tz == 0 then
+            return -- no coords set, skip
+        end
+        local target = {x = tx, y = ty, z = tz}
+        local node = minetest.get_node(pos)
+        local facing = node.param2
+
+        -- check if at goal (Chebyshev ≤1)
+        local dx = math.abs(pos.x - target.x)
+        local dy = math.abs(pos.y - target.y)
+        local dz = math.abs(pos.z - target.z)
+        if dx <= 1 and dy <= 1 and dz <= 1 then
+            return -- done
+        end
+
+        -- cached path
+        local nav = meta:get_string("nav_path")
+        if nav ~= "" then
+            local actions = string.split(nav, ",")
+            if #actions > 0 then
+                local act = actions[1]
+                table.remove(actions, 1)
+                meta:set_string("nav_path", table.concat(actions, ","))
+                if act == "f" then move_bot(pos, "f")
+                elseif act == "j" then
+                    local jn = minetest.get_node(pos)
+                    local jd = minetest.facedir_to_dir(jn.param2)
+                    position_bot(pos, {x = pos.x - jd.x, y = pos.y + 1, z = pos.z - jd.z})
+                elseif act == "d" then move_bot(pos, "d")
+                elseif act == "cw" then bot_turn_clockwise(pos)
+                elseif act == "ccw" then bot_turn_anticlockwise(pos)
+                end
+                meta:set_int("PC", PC)
+                return
+            end
+        end
+
+        -- recalculate path
+        local path = find_path_to_player(pos, facing, target)
+        if path == "done" then return end
+        if path then
+            local actions = string.split(path, ",")
+            if #actions > 0 then
+                local act = actions[1]
+                table.remove(actions, 1)
+                meta:set_string("nav_path", table.concat(actions, ","))
+                if act == "f" then move_bot(pos, "f")
+                elseif act == "j" then
+                    local jn = minetest.get_node(pos)
+                    local jd = minetest.facedir_to_dir(jn.param2)
+                    position_bot(pos, {x = pos.x - jd.x, y = pos.y + 1, z = pos.z - jd.z})
+                elseif act == "d" then move_bot(pos, "d")
+                elseif act == "cw" then bot_turn_clockwise(pos)
+                elseif act == "ccw" then bot_turn_anticlockwise(pos)
+                end
+                meta:set_int("PC", PC)
+            end
+        end
     elseif item == "vbots2:redstone_toggle" then
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)
@@ -1118,6 +1185,7 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
 clean_bot_table()
         end
 })
+end
 
 register_bot("vbots2:off", "Inactive Vbot", {
             "vbots_turtle_top.png",

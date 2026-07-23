@@ -110,6 +110,15 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                     inv:set_stack("p"..meta:get_int("program"), last, ItemStack(nil))
                 end
             end
+            if fields.goto_pos then
+                local formname = "gotocoords," .. bot_key
+                local fs = "size[5,4]" ..
+                    "field[0.5,0.3;4,1;gotox;X;]" ..
+                    "field[0.5,1.3;4,1;gotoy;Y;]" ..
+                    "field[0.5,2.3;4,1;gotoz;Z;]" ..
+                    "button_exit[1,3.3;3,1;okgo;Set & Insert]"
+                minetest.after(0.1, minetest.show_formspec, player:get_player_name(), formname, fs)
+            end
             if not fields.exit and not fields.run then
                 for f,v in pairs(fields) do
                     -- f1-f6 are single-token (no underscore)
@@ -136,6 +145,7 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                                 nametable[1]=="sign" or
                                 nametable[1]=="go" or
                                 nametable[1]=="redstone" or
+                                nametable[1]=="goto" or
                                 f == "count" then
                             --print("COMMAND!!!!!!!")
                             local leftover = inv:add_item("p"..meta:get_int("program"), ItemStack("vbots2:"..f))
@@ -152,7 +162,31 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
         for n,d in pairs(data.fields) do
             bot_list[#bot_list+1] = n
         end
-        if #form_parts == 2 and form_parts[1] == "loadbot" then
+        if #form_parts == 2 and form_parts[1] == "gotocoords" then
+            -- Coordinate input for goto_pos
+            local bot_data = vbots2.bot_info[form_parts[2]]
+            if bot_data then
+                local pos = bot_data.pos
+                local meta = minetest.get_meta(pos)
+                local inv = meta:get_inventory()
+                minetest.close_formspec(player:get_player_name(), bot_key)
+                if fields.okgo then
+                    local x = tonumber(fields.gotox)
+                    local y = tonumber(fields.gotoy)
+                    local z = tonumber(fields.gotoz)
+                    if x and y and z then
+                        local stack = ItemStack("vbots2:goto_pos")
+                        local smeta = stack:get_meta()
+                        smeta:set_int("pos_x", x)
+                        smeta:set_int("pos_y", y)
+                        smeta:set_int("pos_z", z)
+                        smeta:set_string("description", "Go to " .. x .. "," .. y .. "," .. z)
+                        inv:add_item("p"..meta:get_int("program"), stack)
+                    end
+                end
+                minetest.after(0.1, vbots2.show_formspec, player, pos)
+            end
+        elseif #form_parts == 2 and form_parts[1] == "loadbot" then
             -- print("Load Bot formspec received")
             local bot_data = vbots2.bot_info[form_parts[2]]
             local pos=bot_data.pos
