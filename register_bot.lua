@@ -887,6 +887,7 @@ local function bot_parsecommand(pos,item)
                 ndef.on_rightclick(front_pos, front_node, player)
             end
         end
+    end
     local fnum = item:match("^vbots2:f(%d)$")
     if fnum then
         local PC = meta:get_int("PC")
