@@ -877,7 +877,15 @@ local function bot_parsecommand(pos,item)
                 elseif act == "ccw" then
                     bot_turn_anticlockwise(pos)
                 end
-
+                -- update PC + nav_active on new meta after move
+                local np_cache = pos
+                if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np_cache = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
+                elseif act == "d" then np_cache = {x = pos.x, y = pos.y - 1, z = pos.z}
+                elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np_cache = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
+                end
+                local nm_cache = minetest.get_meta(np_cache)
+                nm_cache:set_int("PC", PC - 1)
+                nm_cache:set_int("nav_active", 1)
                 return
             end
         end
@@ -906,9 +914,16 @@ local function bot_parsecommand(pos,item)
                     bot_turn_clockwise(pos)
                 elseif act == "ccw" then
                     bot_turn_anticlockwise(pos)
-end
-
                 end
+                -- update PC + nav_active on new meta after move
+                local np_fresh = pos
+                if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np_fresh = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
+                elseif act == "d" then np_fresh = {x = pos.x, y = pos.y - 1, z = pos.z}
+                elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np_fresh = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
+                end
+                local nm_fresh = minetest.get_meta(np_fresh)
+                nm_fresh:set_int("PC", PC - 1)
+                nm_fresh:set_int("nav_active", 1)
         else
             -- no path: retry next tick
             vbots2.log(meta:get_string("name"), "no path: retrying")
