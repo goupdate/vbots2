@@ -106,7 +106,7 @@ function resolve_value(stack, meta)
         return 0
     end
 end
-local facedirs = {
+facedirs = {
     {x=0, z=1},   -- 0: south
     {x=1, z=0},   -- 1: east
     {x=0, z=-1},  -- 2: north
