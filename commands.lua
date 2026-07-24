@@ -260,6 +260,10 @@ function bot_parsecommand(pos,item)
         local PC = meta:get_int("PC")
         local var_item = inv:get_stack("p"..PR, PC):get_name()
         local var_name = var_item:match("var_(.)$")
+        if not var_name then
+            var_name = meta:get_string("active_var")
+        end
+        if var_name == "" then var_name = nil end
         local front_node, front_pos = get_front_node(pos)
         local sign_meta = minetest.get_meta(front_pos)
         local text = sign_meta:get_string("text")
@@ -287,8 +291,8 @@ function bot_parsecommand(pos,item)
         local front_node, front_pos = get_front_node(pos)
         if not front_node.name:find("sign") then
             if not minetest.is_protected(front_pos, meta:get_string("owner")) then
-                local sign_name = minetest.registered_nodes["mcl_signs:wall_sign_bamboo"]
-                    and "mcl_signs:wall_sign_bamboo"
+                local sign_name = minetest.registered_nodes["mcl_signs:standing_sign_bamboo"]
+                    and "mcl_signs:standing_sign_bamboo"
                     or minetest.registered_nodes["default:sign_wall_wood"]
                     and "default:sign_wall_wood"
                     or nil

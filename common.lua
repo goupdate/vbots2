@@ -89,6 +89,9 @@ function node_matches(got, expected)
 end
 
 function bot_add_items(inv, listname, stack)
+    -- skip signs: bot creates them via sign_print
+    local name = stack:get_name()
+    if name and name:find("sign") then return end
     inv:add_item(listname, stack)
 end
 
