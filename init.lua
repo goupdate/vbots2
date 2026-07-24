@@ -254,6 +254,10 @@ vbots2.bot_togglestate = function(pos,mode)
         meta:set_string("home",minetest.serialize(pos))
         meta:set_int("nav_active", 0)
         meta:set_string("nav_path", "")
+        meta:set_int("goto_tx", 0)
+        meta:set_int("goto_ty", 0)
+        meta:set_int("goto_tz", 0)
+        meta:set_float("nav_retry", 0)
         meta:set_float("state_stop_time", 0)
     elseif mode == "off" then
         newname = "vbots2:off"
