@@ -95,8 +95,6 @@ vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
     local marker_pos = {x = pos.x, y = pos.y + 0.5, z = pos.z}
     local marker = minetest.add_entity(marker_pos, "vbots2:minimap_marker")
     vbots2.bot_info[bot_key].marker = marker
-    local body = minetest.add_entity(pos, "vbots2:bot_body")
-    vbots2.bot_info[bot_key].body = body
     local meta = minetest.get_meta(pos)
 	meta:set_string("infotext", bot_name .. " (" .. bot_owner .. ")")
     local inv = meta:get_inventory()
@@ -250,6 +248,8 @@ vbots2.bot_togglestate = function(pos,mode)
         timer:start(1/meta:get_int("steptime"))
         meta:set_int("PC",0)
         meta:set_int("PR",0)
+        meta:set_int("repeat",0)
+        meta:set_int("skip",0)
         meta:set_string("stack","")
         meta:set_string("home",minetest.serialize(pos))
         meta:set_int("nav_active", 0)
@@ -283,6 +283,12 @@ end
 
 dofile(vbots2.modpath.."/formspec.lua")
 dofile(vbots2.modpath.."/formspec_handler.lua")
-dofile(vbots2.modpath.."/register_bot.lua")
+dofile(vbots2.modpath.."/common.lua")
+dofile(vbots2.modpath.."/movement.lua")
+dofile(vbots2.modpath.."/dig_build.lua")
+dofile(vbots2.modpath.."/pathfinding.lua")
+dofile(vbots2.modpath.."/commands.lua")
+dofile(vbots2.modpath.."/timer.lua")
+dofile(vbots2.modpath.."/nodes.lua")
 dofile(vbots2.modpath.."/register_commands.lua")
 dofile(vbots2.modpath.."/register_joinleave.lua")
