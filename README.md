@@ -2,6 +2,8 @@
 
 An extended visual programming bot mod for [Luanti](https://www.luanti.org/) (formerly Minetest).
 
+**Requires Luanti 5.14.0+.** Tested on 5.14.0.
+
 Vbots are single-block "turtle" style bots, programmable in an entirely visual way — no text typing required.
 
 ## What's New in vbots2

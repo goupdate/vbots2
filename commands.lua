@@ -48,7 +48,7 @@ function bot_parsecommand(pos,item)
         local dx = math.abs(pos.x - target.x)
         local dy = math.abs(pos.y - target.y)
         local dz = math.abs(pos.z - target.z)
-        if dx <= 1 and dy <= 1 and dz <= 1 then
+        if dy <= 1 and ((dx == 0 and dz <= 1) or (dz == 0 and dx <= 1)) then
             meta:set_int("nav_active", 0)
             meta:set_int("home_tx", 0)
             meta:set_int("home_ty", 0)
@@ -261,20 +261,12 @@ function bot_parsecommand(pos,item)
         local var_item = inv:get_stack("p"..PR, PC):get_name()
         local var_name = var_item:match("var_(.)$")
         local front_node, front_pos = get_front_node(pos)
-        if not front_node.name:find("sign") then
-            if not minetest.is_protected(front_pos, meta:get_string("owner")) then
-                local sign_name = minetest.registered_nodes["mcl_signs:wall_sign_bamboo"]
-                    and "mcl_signs:wall_sign_bamboo"
-                    or minetest.registered_nodes["default:sign_wall_wood"]
-                    and "default:sign_wall_wood"
-                    or nil
-                if sign_name then
-                    minetest.set_node(front_pos, {name = sign_name})
-                end
-            end
-        end
         local sign_meta = minetest.get_meta(front_pos)
         local text = sign_meta:get_string("text")
+        if text == "" and mcl_signs then
+            local utext = minetest.deserialize(sign_meta:get_string("utext"), true)
+            if utext then text = mcl_signs.ustring_to_string(utext) end
+        end
         local num = tonumber(text)
         if num and var_name then
             meta:set_int("var_" .. var_name, num)
@@ -285,6 +277,13 @@ function bot_parsecommand(pos,item)
         local PC = meta:get_int("PC")
         local var_item = inv:get_stack("p"..PR, PC):get_name()
         local var_name = var_item:match("var_(.)$")
+        if not var_name then
+            var_name = meta:get_string("active_var")
+        end
+        local val = 0
+        if var_name ~= "" then
+            val = meta:get_int("var_" .. var_name)
+        end
         local front_node, front_pos = get_front_node(pos)
         if not front_node.name:find("sign") then
             if not minetest.is_protected(front_pos, meta:get_string("owner")) then
@@ -294,15 +293,26 @@ function bot_parsecommand(pos,item)
                     and "default:sign_wall_wood"
                     or nil
                 if sign_name then
-                    minetest.set_node(front_pos, {name = sign_name})
+                    local wdir = minetest.facedir_to_dir(minetest.get_node(pos).param2)
+                    local wm
+                    if wdir.z == 1 then wm = 5
+                    elseif wdir.z == -1 then wm = 4
+                    elseif wdir.x == 1 then wm = 3
+                    elseif wdir.x == -1 then wm = 2
+                    else wm = 2 end
+                    minetest.set_node(front_pos, {name = sign_name, param2 = wm})
                 end
             end
         end
-        if var_name then
-            local val = meta:get_int("var_" .. var_name)
-            local sign_meta = minetest.get_meta(front_pos)
-            sign_meta:set_string("text", tostring(val))
-            if mcl_signs and mcl_signs.update_sign then
+        local sign_meta = minetest.get_meta(front_pos)
+        local txt = tostring(val)
+        sign_meta:set_string("text", txt)
+        sign_meta:set_string("infotext", txt)
+        sign_meta:set_string("formspec", "field[text;;${text}]")
+        -- VoxeLibre/MCL: set utext + update entity texture
+        if mcl_signs then
+            sign_meta:set_string("utext", minetest.serialize(mcl_signs.string_to_ustring(txt)))
+            if mcl_signs.update_sign then
                 mcl_signs.update_sign(front_pos)
             end
         end
@@ -489,7 +499,7 @@ function bot_parsecommand(pos,item)
         local dx = math.abs(pos.x - target.x)
         local dy = math.abs(pos.y - target.y)
         local dz = math.abs(pos.z - target.z)
-        if dx <= 1 and dy <= 1 and dz <= 1 then
+        if dy <= 1 and ((dx == 0 and dz <= 1) or (dz == 0 and dx <= 1)) then
             meta:set_int("nav_active", 0)
             meta:set_int("goto_tx", 0)
             meta:set_int("goto_ty", 0)

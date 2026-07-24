@@ -1,4 +1,4 @@
--- nodes.lua — Bot node definitions (on/off), minimap marker entity, combat body entity, crafting recipes
+-- nodes.lua ï¿½ Bot node definitions (on/off), minimap marker entity, combat body entity, crafting recipes
  
 -------------------------------------
 -- Minimap marker color update
@@ -52,6 +52,40 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
         end,
         can_dig = function(pos,player)
             return interact(player,pos)
+        end,
+        -- duplicate non-vbots2 items when dragged from main to program
+        allow_metadata_inventory_put = function(pos, listname, index, stack, player)
+            if listname:match("^p%d$") and player and stack and not stack:is_empty() then
+                local name = stack:get_name()
+                if not name:match("^vbots2:") then
+                    -- allow the put, but we'll restore the item in on_metadata_inventory_put
+                end
+            end
+            return stack:get_count()
+        end,
+        on_metadata_inventory_put = function(pos, listname, index, stack, player)
+            if listname:match("^p%d$") and player and stack and not stack:is_empty() then
+                local name = stack:get_name()
+                if not name:match("^vbots2:") then
+                    -- duplicate: restore a copy to player's main inventory
+                    local pinv = player:get_inventory()
+                    if pinv then
+                        pinv:add_item("main", stack)
+                    end
+                end
+            end
+        end,
+        on_metadata_inventory_take = function(pos, listname, index, stack, player)
+            if listname:match("^p%d$") and player and stack and not stack:is_empty() then
+                local name = stack:get_name()
+                if not name:match("^vbots2:") then
+                    -- return from program: remove from player's main (it was just added there)
+                    local pinv = player:get_inventory()
+                    if pinv then
+                        pinv:remove_item("main", stack)
+                    end
+                end
+            end
         end,
 on_destruct = function(pos)
             local meta = minetest.get_meta(pos)
