@@ -1,18 +1,18 @@
--- movement.lua — Bot movement: position swap (smooth node transfer), directional moves, turns
+-- movement.lua ï¿½ Bot movement: position swap (smooth node transfer), directional moves, turns
  
-local function bot_turn_clockwise(pos)
+function bot_turn_clockwise(pos)
     local node = minetest.get_node(pos)
     local newface = (node.param2+1)%4
     facebot(newface,pos)
 end
 
-local function bot_turn_anticlockwise(pos)
+function bot_turn_anticlockwise(pos)
     local node = minetest.get_node(pos)
     local newface = (node.param2-1)%4
     facebot(newface,pos)
 end
 
-local function bot_turn_random(pos)
+function bot_turn_random(pos)
     if math.random(2)==1 then
         bot_turn_clockwise(pos)
     else
@@ -20,7 +20,7 @@ local function bot_turn_random(pos)
     end
 end
 
-local function position_bot(pos,newpos)
+function position_bot(pos,newpos)
     local meta = minetest.get_meta(pos)
     local R = meta:get_int("steptime")
     local bot_owner = meta:get_string("owner")
@@ -112,7 +112,7 @@ local function position_bot(pos,newpos)
 end
 
 
-local function move_bot(pos,direction)
+function move_bot(pos,direction)
     local meta = minetest.get_meta(pos)
     local bot_owner = meta:get_string("owner")
     local player = minetest.get_player_by_name(bot_owner)

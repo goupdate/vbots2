@@ -1,6 +1,6 @@
 -- commands.lua � Main command dispatcher. Parses program items and executes bot actions. Includes all command handlers (move, turn, dig, build, conditions, variables, nav, redstone).
  
-local function bot_parsecommand(pos,item)
+function bot_parsecommand(pos,item)
     local meta = minetest.get_meta(pos)
     local bot_owner = meta:get_string("owner")
     if item == "vbots2:move_forward" then

@@ -1,6 +1,6 @@
--- pathfinding.lua — A* pathfinding to target position (player or coords). Actions: forward, jump, down, turn cw/ccw. Heuristic: max(|dx|+|dz|, |dy|).
+-- pathfinding.lua ï¿½ A* pathfinding to target position (player or coords). Actions: forward, jump, down, turn cw/ccw. Heuristic: max(|dx|+|dz|, |dy|).
  
-local function find_path_to_player(bot_pos, bot_facing, player_pos)
+function find_path_to_player(bot_pos, bot_facing, player_pos)
     local max_steps = 500
     local max_visited = 50000
     local visited_count = 0

@@ -1,14 +1,14 @@
 ﻿-- common.lua -- Shared utilities for vbots2: state push/pull, node matching, value resolution, walkable checks, bot interaction callbacks
 
 
-local function push_state(pos,a,b,c)
+function push_state(pos,a,b,c)
     local meta = minetest.get_meta(pos)
     local stack = meta:get_string("stack")
     local push = a..","..b..","..c..","
     meta:set_string("stack", push..stack)
 end
 
-local function pull_state(pos)
+function pull_state(pos)
     local meta = minetest.get_meta(pos)
     local stack = meta:get_string("stack")
     local newstack = ""
@@ -31,7 +31,7 @@ end
 -------------------------------------
 -- callback from bot node can_dig
 -------------------------------------
-local function interact(player,pos,isempty)
+function interact(player,pos,isempty)
     local name = player:get_player_name()
     local meta = minetest.get_meta(pos)
     local player_is_owner = ( name == meta:get_string("owner") )
@@ -46,7 +46,7 @@ end
 -------------------------------------
 -- Clean up bot table and bot storage
 -------------------------------------
-local function clean_bot_table()
+function clean_bot_table()
     for bot_key,bot_data in pairs( vbots2.bot_info) do
         local meta = minetest.get_meta(bot_data.pos)
         local bot_name = meta:get_string("name")
@@ -61,12 +61,12 @@ end
 -------------------------------------
 -- Bot Action Handlers
 -------------------------------------
-local function facebot(facing,pos)
+function facebot(facing,pos)
     local node = minetest.get_node(pos)
     minetest.swap_node(pos,{name=node.name, param2=facing})
 end
 
-local function get_front_node(pos)
+function get_front_node(pos)
     local node = minetest.get_node(pos)
     local dir = minetest.facedir_to_dir(node.param2)
     local front_pos = {x = pos.x - dir.x, y = pos.y, z = pos.z - dir.z}
@@ -80,7 +80,7 @@ local dirt_aliases = {
     ["mcl_core:dirt_with_grass"] = true,
 }
 
-local function node_matches(got, expected)
+function node_matches(got, expected)
     -- treat dirt variants as equal
     if dirt_aliases[got] and dirt_aliases[expected] then
         return true
@@ -88,11 +88,11 @@ local function node_matches(got, expected)
     return got == expected
 end
 
-local function bot_add_items(inv, listname, stack)
+function bot_add_items(inv, listname, stack)
     inv:add_item(listname, stack)
 end
 
-local function resolve_value(stack, meta)
+function resolve_value(stack, meta)
     local name = stack:get_name()
     if name:match("^vbots2:var_") then
         local v = name:match("var_(.)$")
@@ -113,7 +113,7 @@ local facedirs = {
     {x=-1, z=0},  -- 3: west
 }
 
-local function is_walkable(p)
+function is_walkable(p)
     local node = minetest.get_node(p)
     local n = node.name
     if n == "air" then return true end

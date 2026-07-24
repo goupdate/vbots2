@@ -1,6 +1,6 @@
--- dig_build.lua — Dig (break block + loot + chest handling) and Build (place block + chest transfer)
+-- dig_build.lua ï¿½ Dig (break block + loot + chest handling) and Build (place block + chest transfer)
  
-local function bot_dig(pos,digy)
+function bot_dig(pos,digy)
     local meta = minetest.get_meta(pos)
     local bot_owner = meta:get_string("owner")
     local node = minetest.get_node(pos)
@@ -93,7 +93,7 @@ if not minetest.is_protected(digpos, bot_owner) then
     end
 end
 
-local function bot_build(pos, buildy, filter)
+function bot_build(pos, buildy, filter)
     local meta = minetest.get_meta(pos)
     local inv = meta:get_inventory()
     local bot_owner = meta:get_string("owner")

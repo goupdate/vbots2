@@ -1,6 +1,6 @@
 -- timer.lua � Bot tick loop: gravity check, command dispatch, skip handling, magnet pickup, punch toggle
  
-local function punch_bot(pos,player)
+function punch_bot(pos,player)
     local meta = minetest.get_meta(pos)
     local bot_owner = meta:get_string("owner")
     if bot_owner == player:get_player_name() then
@@ -26,7 +26,7 @@ local function bot_pickup_items(pos)
     end
 end
 
-local function bot_handletimer(pos)
+function bot_handletimer(pos)
     bot_pickup_items(pos)
     local meta = minetest.get_meta(pos)
 
