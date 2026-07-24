@@ -34,7 +34,8 @@ register_command("turn_random","Move bot 90° in a random direction","vbots_turn
 -- register_command("case_test","Test","vbots_case_test.png")
 -- register_command("case_repeat","Repeat","vbots_case_repeat.png")
 
-register_command("mode_build","Place behind or put in chest behind","vbots_mode_build.png")
+register_command("mode_build","Place ahead or into chest","vbots_mode_build.png")
+register_command("build_behind","Place behind or into chest behind","vbots_build_behind.png")
 register_command("mode_build_up","Place a block above the block behind the bot","vbots_mode_build_up.png")
 register_command("mode_build_down","Place a block below the block behind the bot","vbots_mode_build_down.png")
 

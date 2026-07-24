@@ -139,6 +139,7 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                                 nametable[1]=="turn" or
                                 nametable[1]=="number" or
                                 nametable[1]=="mode" or
+                                nametable[1]=="build" or
                                 nametable[1]=="gt" or
                                 nametable[1]=="lt" or
                                 nametable[1]=="gte" or

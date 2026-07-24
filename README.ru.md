@@ -112,9 +112,10 @@ vbots2 добавляет **условную логику** и улучшени�
 | ![dig](textures/vbots_mode_dig.png) | Копать вперёд | Копает блок впереди и заходит в него |
 | ![dig up](textures/vbots_mode_dig_up.png) | Копать вверх | Копает блок сверху (остаётся на месте, не летает) |
 | ![dig down](textures/vbots_mode_dig_down.png) | Копать вниз | Копает блок снизу и опускается |
-| ![build](textures/vbots_mode_build.png) | Строить сзади | Ставит блок позади бота |
-| ![build up](textures/vbots_mode_build_up.png) | Строить вверх | Ставит блок над позицией сзади |
-| ![build down](textures/vbots_mode_build_down.png) | Строить вниз | Ставит блок под позицией сзади |
+| ![build up](textures/vbots_mode_build_up.png) | Строить вверх | Ставит блок над позицией впереди |
+| ![build](textures/vbots_mode_build.png) | Строить вперёд | Ставит блок впереди (или в сундук впереди) |
+| ![build behind](textures/vbots_build_behind.png) | Строить назад | Ставит блок позади (или в сундук позади) |
+| ![build down](textures/vbots_mode_build_down.png) | Строить вниз | Ставит блок под позицией впереди |
 
 **Строительство:**
 - Если цель — **воздух** → ставит первый блок из инвентаря

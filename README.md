@@ -112,9 +112,10 @@ Movement fails if the destination is not empty. **Gravity:** the bot falls autom
 | ![dig](textures/vbots_mode_dig.png) | Dig Forward | Dig the block in front, then move into that space |
 | ![dig up](textures/vbots_mode_dig_up.png) | Dig Up | Dig the block above, then move up |
 | ![dig down](textures/vbots_mode_dig_down.png) | Dig Down | Dig the block below, then move down |
-| ![build](textures/vbots_mode_build.png) | Build Behind | Place a block behind the bot |
-| ![build up](textures/vbots_mode_build_up.png) | Build Up | Place a block above the position behind |
-| ![build down](textures/vbots_mode_build_down.png) | Build Down | Place a block below the position behind |
+| ![build up](textures/vbots_mode_build_up.png) | Build Up | Place a block above the position ahead |
+| ![build](textures/vbots_mode_build.png) | Build Ahead | Place a block ahead (or transfer into chest ahead) |
+| ![build behind](textures/vbots_build_behind.png) | Build Behind | Place a block behind (or transfer into chest behind) |
+| ![build down](textures/vbots_mode_build_down.png) | Build Down | Place a block below the position ahead |
 
 **Building behavior:**
 - If the target is **air** → places the first block from the bot's inventory

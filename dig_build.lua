@@ -98,13 +98,18 @@ if not minetest.is_protected(digpos, bot_owner) then
     end
 end
 
-function bot_build(pos, buildy, filter)
+function bot_build(pos, buildy, filter, mode)
     local meta = minetest.get_meta(pos)
     local inv = meta:get_inventory()
     local bot_owner = meta:get_string("owner")
     local node = minetest.get_node(pos)
     local dir = minetest.facedir_to_dir(node.param2)
-    local front_pos = {x = pos.x - dir.x, y = pos.y, z = pos.z - dir.z}
+    local front_pos
+    if mode == "behind" then
+        front_pos = {x = pos.x + dir.x, y = pos.y, z = pos.z + dir.z}
+    else
+        front_pos = {x = pos.x - dir.x, y = pos.y, z = pos.z - dir.z}
+    end
     local front_node = minetest.get_node(front_pos)
 
     -- check ahead for bot or chest transfer first
@@ -156,10 +161,12 @@ function bot_build(pos, buildy, filter)
         return
     end
 
-    -- no chest ahead: normal build behind
+    -- no chest ahead: normal build ahead (front)
     local buildpos
-    if buildy == 0 then
-        buildpos = {x = pos.x+dir.x, y = pos.y, z = pos.z+dir.z}
+    if mode == "behind" then
+        buildpos = {x = pos.x + dir.x, y = pos.y, z = pos.z + dir.z}
+    elseif buildy == 0 then
+        buildpos = {x = pos.x - dir.x, y = pos.y, z = pos.z - dir.z}
     else
         buildpos = {x = pos.x, y = pos.y+buildy, z = pos.z}
     end
