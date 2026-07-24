@@ -24,102 +24,23 @@ function bot_parsecommand(pos,item)
         move_bot(pos,"b")
     elseif item == "vbots2:move_down" then
         move_bot(pos,"d")
+    elseif item == "vbots2:move_up" then
+        move_bot(pos, "u")
     elseif item == "vbots2:move_home" then
-        local PC = meta:get_int("PC")
-        local PR = meta:get_int("PR")
-        local hx = meta:get_int("home_tx")
-        local hy = meta:get_int("home_ty")
-        local hz = meta:get_int("home_tz")
-        if hx == 0 and hy == 0 and hz == 0 then
-            -- first call: read home pos from meta
-            local home_pos = minetest.deserialize(meta:get_string("home"))
-            if not home_pos then return end -- if no home set
-            hx = home_pos.x; hy = home_pos.y; hz = home_pos.z
-            meta:set_int("home_tx", hx)
-            meta:set_int("home_ty", hy)
-            meta:set_int("home_tz", hz)
-            meta:set_int("nav_active", 1)
-            meta:set_int("nav_pr", PR)
-        end -- if hx == 0
-        local target = {x = hx, y = hy, z = hz}
-        local node = minetest.get_node(pos)
-        local facing = node.param2
-
-        local dx = math.abs(pos.x - target.x)
-        local dy = math.abs(pos.y - target.y)
-        local dz = math.abs(pos.z - target.z)
-        if dy <= 1 and ((dx == 0 and dz <= 1) or (dz == 0 and dx <= 1)) then
-            meta:set_int("nav_active", 0)
-            meta:set_int("home_tx", 0)
-            meta:set_int("home_ty", 0)
-            meta:set_int("home_tz", 0)
-            meta:set_string("nav_path", "")
-            meta:set_int("PC", PC - 1)
-            return
-        end -- if at goal
-
-        local nav = meta:get_string("nav_path")
-        if nav ~= "" then
-            local actions = string.split(nav, ",")
-            if #actions > 0 then
-                local act = actions[1]
-                table.remove(actions, 1)
-                meta:set_string("nav_path", table.concat(actions, ","))
-                if act == "f" then move_bot(pos, "f")
-                elseif act == "j" then
-                    local jn = minetest.get_node(pos)
-                    local jd = minetest.facedir_to_dir(jn.param2)
-                    position_bot(pos, {x = pos.x - jd.x, y = pos.y + 1, z = pos.z - jd.z})
-                elseif act == "d" then move_bot(pos, "d")
-                elseif act == "cw" then bot_turn_clockwise(pos)
-                elseif act == "ccw" then bot_turn_anticlockwise(pos)
-                end -- if act
-                local np = pos
-                if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
-                elseif act == "d" then np = {x = pos.x, y = pos.y - 1, z = pos.z}
-                elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
-                end -- if act
-                minetest.get_meta(np):set_int("PC", PC - 1)
-                minetest.get_meta(np):set_int("nav_active", 1)
-                return
-            end -- if #actions > 0
-        end -- if nav ~= ""
-
-        local path = find_path_to_player(pos, facing, target)
-        if path == "done" then
-            meta:set_int("nav_active", 0)
-            meta:set_int("home_tx", 0)
-            meta:set_int("home_ty", 0)
-            meta:set_int("home_tz", 0)
-            meta:set_string("nav_path", "")
-            return
-        end -- if path == "done"
-        if path then
-            local actions = string.split(path, ",")
-            if #actions > 0 then
-                local act = actions[1]
-                table.remove(actions, 1)
-                meta:set_string("nav_path", table.concat(actions, ","))
-                if act == "f" then move_bot(pos, "f")
-                elseif act == "j" then
-                    local jn = minetest.get_node(pos)
-                    local jd = minetest.facedir_to_dir(jn.param2)
-                    position_bot(pos, {x = pos.x - jd.x, y = pos.y + 1, z = pos.z - jd.z})
-                elseif act == "d" then move_bot(pos, "d")
-                elseif act == "cw" then bot_turn_clockwise(pos)
-                elseif act == "ccw" then bot_turn_anticlockwise(pos)
-                end -- if act
-                local np2 = pos
-                if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np2 = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
-                elseif act == "d" then np2 = {x = pos.x, y = pos.y - 1, z = pos.z}
-                elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np2 = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
-                end -- if act
-                minetest.get_meta(np2):set_int("PC", PC - 1)
-                minetest.get_meta(np2):set_int("nav_active", 1)
-            end -- if #actions > 0
-        else
-            meta:set_float("nav_retry", minetest.get_gametime())
-        end -- if path
+        local home_pos = minetest.deserialize(meta:get_string("home"))
+        if home_pos then
+            -- find empty spot near home
+            local target = home_pos
+            if minetest.get_node(target).name ~= "air" then
+                for dy = 0, 3 do
+                    local check = {x = target.x, y = target.y + dy, z = target.z}
+                    if minetest.get_node(check).name == "air" then
+                        target = check; break
+                    end
+                end
+            end
+            position_bot(pos, target)
+        end
     elseif item == "vbots2:turn_clockwise" then
         bot_turn_clockwise(pos)
     elseif item == "vbots2:turn_anticlockwise" then
@@ -156,6 +77,12 @@ function bot_parsecommand(pos,item)
         local PC = meta:get_int("PC")
         local filter = inv:get_stack("p"..PR, PC):get_name()
         bot_build(pos, 0, filter)
+    elseif item == "vbots2:build_behind" then
+        local inv = meta:get_inventory()
+        local PR = meta:get_int("PR")
+        local PC = meta:get_int("PC")
+        local filter = inv:get_stack("p"..PR, PC):get_name()
+        bot_build(pos, 0, filter, true)
     elseif item == "vbots2:mode_build_down" then
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
@@ -355,239 +282,59 @@ function bot_parsecommand(pos,item)
     elseif item == "vbots2:go_player" then
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)
-        local node = minetest.get_node(pos)
-        local facing = node.param2
-        local PC = meta:get_int("PC")
-
-        if not player then
-            return
-        end
-        -- mark navigation active so handletimer stays on this command
-        meta:set_int("nav_active", 1)
-        meta:set_int("nav_pc", PC)
-        meta:set_int("nav_pr", meta:get_int("PR"))
-        vbots2.log(meta:get_string("name"), "go_player: start")
-
-        local player_pos = player:get_pos()
-        if not player_pos then
-            return
-        end
-
-        -- if player is flying, trace down to solid ground
-        local round_pos = {x = math.floor(player_pos.x + 0.5), y = math.floor(player_pos.y + 0.5), z = math.floor(player_pos.z + 0.5)}
-        local below_n = minetest.get_node({x = round_pos.x, y = round_pos.y - 1, z = round_pos.z}).name
-        if below_n == "air" then
-            local gy = round_pos.y - 2
-            while gy > -31000 do
-                local nn = minetest.get_node({x = round_pos.x, y = gy, z = round_pos.z}).name
-                if nn ~= "air" then break end
-                gy = gy - 1
-            end
-            round_pos.y = gy + 1
-        end
-
-        -- check if at goal (within 1 block, not same block)
-        local dx = math.abs(pos.x - round_pos.x)
-        local dy = math.abs(pos.y - round_pos.y)
-        local dz = math.abs(pos.z - round_pos.z)
-        if dx <= 1 and dy <= 1 and dz <= 1 and (dx + dy + dz) > 0 then
-            local retry_time = meta:get_float("nav_retry")
-            local now = minetest.get_gametime()
-            if retry_time == 0 then
-                meta:set_float("nav_retry", now)
-                meta:set_int("nav_active", 0)
-                meta:set_int("PC", PC - 1)
-                return
-            elseif now - retry_time >= 5 then
-                meta:set_float("nav_retry", 0)
-                meta:set_int("nav_active", 0)
-                return -- done waiting, advance to next command
-            end
-            meta:set_int("nav_active", 0)
-            meta:set_int("PC", PC - 1)
-            return
-        end
-
-        -- try stored path first
-        local nav = meta:get_string("nav_path")
-        if nav ~= "" then
-            local actions = string.split(nav, ",")
-            if #actions > 0 then
-                local act = actions[1]
-                table.remove(actions, 1)
-                meta:set_string("nav_path", table.concat(actions, ","))
-
-                if act == "f" then
-                    move_bot(pos, "f")
-                elseif act == "j" then
-                    local jnode = minetest.get_node(pos)
-                    local jdir = minetest.facedir_to_dir(jnode.param2)
-                    position_bot(pos, {x = pos.x - jdir.x, y = pos.y + 1, z = pos.z - jdir.z})
-                elseif act == "d" then
-                    move_bot(pos, "d")
-                elseif act == "cw" then
-                    bot_turn_clockwise(pos)
-                elseif act == "ccw" then
-                    bot_turn_anticlockwise(pos)
+        if not player then return end
+        local pp = player:get_pos()
+        local px, py, pz = math.floor(pp.x + 0.5), math.floor(pp.y), math.floor(pp.z + 0.5)
+        -- search for empty spot near player
+        local found = false
+        for dy = 0, 3 do
+            for dx = -2, 2 do
+                for dz = -2, 2 do
+                    local check = {x = px + dx, y = py + dy, z = pz + dz}
+                    if minetest.get_node(check).name == "air" and
+                       minetest.get_node({x = check.x, y = check.y - 1, z = check.z}).name ~= "air" then
+                        position_bot(pos, check)
+                        found = true
+                        break
+                    end
                 end
-                -- update PC + nav_active on new meta after move
-                local np_cache = pos
-                if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np_cache = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
-                elseif act == "d" then np_cache = {x = pos.x, y = pos.y - 1, z = pos.z}
-                elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np_cache = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
-                end
-                local nm_cache = minetest.get_meta(np_cache)
-                nm_cache:set_int("PC", PC - 1)
-                nm_cache:set_int("nav_active", 1)
-                return
+                if found then break end
             end
-        end
-
-        -- no more path: recalculate
-        local path = find_path_to_player(pos, facing, round_pos)
-        if path == "done" then
-            return
-        end
-        if path then
-            local actions = string.split(path, ",")
-            if #actions > 0 then
-                local act = actions[1]
-                table.remove(actions, 1)
-                meta:set_string("nav_path", table.concat(actions, ","))
-
-                if act == "f" then
-                    move_bot(pos, "f")
-                elseif act == "j" then
-                    local jnode = minetest.get_node(pos)
-                    local jdir = minetest.facedir_to_dir(jnode.param2)
-                    position_bot(pos, {x = pos.x - jdir.x, y = pos.y + 1, z = pos.z - jdir.z})
-                elseif act == "d" then
-                    move_bot(pos, "d")
-                elseif act == "cw" then
-                    bot_turn_clockwise(pos)
-                elseif act == "ccw" then
-                    bot_turn_anticlockwise(pos)
-                end
-                -- update PC + nav_active on new meta after move
-                local np_fresh = pos
-                if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np_fresh = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
-                elseif act == "d" then np_fresh = {x = pos.x, y = pos.y - 1, z = pos.z}
-                elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np_fresh = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
-                end
-                local nm_fresh = minetest.get_meta(np_fresh)
-                nm_fresh:set_int("PC", PC - 1)
-                nm_fresh:set_int("nav_active", 1)
-            end
-        else
-            -- no path: retry next tick
-            vbots2.log(meta:get_string("name"), "no path: retrying")
-            meta:set_int("PC", PC - 1)
-            return
+            if found then break end
         end
     elseif item == "vbots2:goto_pos" then
         local PC = meta:get_int("PC")
         local PR = meta:get_int("PR")
-        -- read target from meta (stored on first call) or from item stack
-        local tx = meta:get_int("goto_tx")
-        local ty = meta:get_int("goto_ty")
-        local tz = meta:get_int("goto_tz")
-        if tx == 0 and ty == 0 and tz == 0 then
-            -- first call: read coords from item stack at PC-1
-            local inv = meta:get_inventory()
-            local smeta = inv:get_stack("p"..PR, PC-1):get_meta()
-            tx = smeta:get_int("pos_x")
-            ty = smeta:get_int("pos_y")
-            tz = smeta:get_int("pos_z")
-            if tx == 0 and ty == 0 and tz == 0 then
-                return -- no coords set, skip
-            end -- if tx
-            meta:set_int("goto_tx", tx)
-            meta:set_int("goto_ty", ty)
-            meta:set_int("goto_tz", tz)
-            meta:set_int("nav_active", 1)
-            meta:set_int("nav_pr", PR)
-        end -- if tx == 0
-        local target = resolve_goto_target({x = tx, y = ty, z = tz})
-        local node = minetest.get_node(pos)
-        local facing = node.param2
-
-        -- check if at goal (Chebyshev ≤1)
-        local dx = math.abs(pos.x - target.x)
-        local dy = math.abs(pos.y - target.y)
-        local dz = math.abs(pos.z - target.z)
-        if dy <= 1 and ((dx == 0 and dz <= 1) or (dz == 0 and dx <= 1)) then
-            meta:set_int("nav_active", 0)
-            meta:set_int("goto_tx", 0)
-            meta:set_int("goto_ty", 0)
-            meta:set_int("goto_tz", 0)
-            meta:set_string("nav_path", "")
-            meta:set_int("PC", PC - 1)
-            return -- done
-        end -- if at goal
-
-        -- cached path
-        local nav = meta:get_string("nav_path")
-        if nav ~= "" then
-            local actions = string.split(nav, ",")
-            if #actions > 0 then
-                local act = actions[1]
-                table.remove(actions, 1)
-                meta:set_string("nav_path", table.concat(actions, ","))
-                if act == "f" then move_bot(pos, "f")
-                elseif act == "j" then
-                    local jn = minetest.get_node(pos)
-                    local jd = minetest.facedir_to_dir(jn.param2)
-                    position_bot(pos, {x = pos.x - jd.x, y = pos.y + 1, z = pos.z - jd.z})
-                elseif act == "d" then move_bot(pos, "d")
-                elseif act == "cw" then bot_turn_clockwise(pos)
-                elseif act == "ccw" then bot_turn_anticlockwise(pos)
-                end -- if act
-                local np = pos
-                if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
-                elseif act == "d" then np = {x = pos.x, y = pos.y - 1, z = pos.z}
-                elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
-                end -- if act
-                minetest.get_meta(np):set_int("PC", PC - 1)
-                return
-            end -- if #actions > 0
-        end -- if nav ~= ""
-
-        -- recalculate path
-        local path = find_path_to_player(pos, facing, target)
-        if path == "done" then
-            meta:set_int("nav_active", 0)
-            meta:set_int("goto_tx", 0)
-            meta:set_int("goto_ty", 0)
-            meta:set_int("goto_tz", 0)
-            meta:set_string("nav_path", "")
-            return
-        end -- if path == "done"
-        if path then
-            local actions = string.split(path, ",")
-            if #actions > 0 then
-                local act = actions[1]
-                table.remove(actions, 1)
-                meta:set_string("nav_path", table.concat(actions, ","))
-                if act == "f" then move_bot(pos, "f")
-                elseif act == "j" then
-                    local jn = minetest.get_node(pos)
-                    local jd = minetest.facedir_to_dir(jn.param2)
-                    position_bot(pos, {x = pos.x - jd.x, y = pos.y + 1, z = pos.z - jd.z})
-                elseif act == "d" then move_bot(pos, "d")
-                elseif act == "cw" then bot_turn_clockwise(pos)
-                elseif act == "ccw" then bot_turn_anticlockwise(pos)
-                end -- if act
-                local np2 = pos
-                if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np2 = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
-                elseif act == "d" then np2 = {x = pos.x, y = pos.y - 1, z = pos.z}
-                elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np2 = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
-                end -- if act
-                minetest.get_meta(np2):set_int("PC", PC - 1)
-            end -- if #actions > 0
+        local inv = meta:get_inventory()
+        local smeta = inv:get_stack("p"..PR, PC):get_meta()
+        local tx = smeta:get_int("pos_x")
+        local ty = smeta:get_int("pos_y")
+        local tz = smeta:get_int("pos_z")
+        if tx == 0 and ty == 0 and tz == 0 then return end
+        local target = {x = tx, y = ty, z = tz}
+        -- first try target directly
+        if minetest.get_node(target).name == "air" then
+            position_bot(pos, target)
         else
-            -- no path: retry next tick
-            meta:set_float("nav_retry", minetest.get_gametime())
-        end -- if path
+            -- search ±1 horizontal circle, then +1y circle
+            local found = false
+            for dy = 0, 3 do
+                for dx = -1, 1 do
+                    for dz = -1, 1 do
+                        local check = {x = tx + dx, y = ty + dy, z = tz + dz}
+                        if check.x == tx and check.y == ty and check.z == tz then
+                            -- skip the target itself (already checked)
+                        elseif minetest.get_node(check).name == "air" then
+                            position_bot(pos, check)
+                            found = true
+                            break
+                        end
+                    end
+                    if found then break end
+                end
+                if found then break end
+            end
+        end
     elseif item == "vbots2:redstone_toggle" then
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)

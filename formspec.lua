@@ -41,7 +41,7 @@ end
 -------------------------------------
 local function panel_commands()
     local commands = {
-        {"move_forward","move_backward","move_down","move_home","go_player"},
+        {"move_forward","move_backward","move_down","move_up","move_home","go_player"},
         {"turn_clockwise","turn_anticlockwise","turn_random"},
         {"mode_dig_up","mode_dig","mode_dig_down","mode_build_up","mode_build","build_behind","mode_build_down"},
         {"var_a","var_b","var_c","var_d","sign_read","sign_print","count"},
