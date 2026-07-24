@@ -114,13 +114,13 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
             end
             if fields.goto_pos then
                 local formname = "gotocoords," .. bot_key
-                local ppos = player:get_pos()
-                local px, py, pz = math.floor(ppos.x + 0.5), math.floor(ppos.y), math.floor(ppos.z + 0.5)
+                local bpos = bot_data.pos
+                local bx, by, bz = math.floor(bpos.x + 0.5), math.floor(bpos.y), math.floor(bpos.z + 0.5)
                 local fs = "size[5,4]" ..
-                    "label[0.5,0.1;Your position: " .. px .. "," .. py .. "," .. pz .. "]" ..
-                    "field[0.5,0.8;4,1;gotox;X;" .. px .. "]" ..
-                    "field[0.5,1.8;4,1;gotoy;Y;" .. py .. "]" ..
-                    "field[0.5,2.8;4,1;gotoz;Z;" .. pz .. "]" ..
+                    "label[0.5,0.1;Bot position: " .. bx .. "," .. by .. "," .. bz .. "]" ..
+                    "field[0.5,0.8;4,1;gotox;X;" .. bx .. "]" ..
+                    "field[0.5,1.8;4,1;gotoy;Y;" .. by .. "]" ..
+                    "field[0.5,2.8;4,1;gotoz;Z;" .. bz .. "]" ..
                     "button[1,3.3;3,1;okgo;Set & Insert]"
                 minetest.after(0.1, minetest.show_formspec, player:get_player_name(), formname, fs)
             end
