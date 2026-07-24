@@ -1,5 +1,20 @@
 -- commands.lua � Main command dispatcher. Parses program items and executes bot actions. Includes all command handlers (move, turn, dig, build, conditions, variables, nav, redstone).
  
+local function resolve_goto_target(target)
+    -- if target is a solid block, stand on top of it
+    local tnode = minetest.get_node(target)
+    local tdef = minetest.registered_nodes[tnode.name]
+    if tdef and tdef.walkable then
+        local above = {x = target.x, y = target.y + 1, z = target.z}
+        local an = minetest.get_node(above)
+        local adef = minetest.registered_nodes[an.name]
+        if not adef or not adef.walkable then
+            return above
+        end
+    end
+    return target
+end
+
 function bot_parsecommand(pos,item)
     local meta = minetest.get_meta(pos)
     local bot_owner = meta:get_string("owner")
@@ -363,7 +378,7 @@ function bot_parsecommand(pos,item)
         if tx == 0 and ty == 0 and tz == 0 then
             return -- no coords set, skip
         end
-        local target = {x = tx, y = ty, z = tz}
+        local target = resolve_goto_target({x = tx, y = ty, z = tz})
         local node = minetest.get_node(pos)
         local facing = node.param2
 
@@ -372,6 +387,8 @@ function bot_parsecommand(pos,item)
         local dy = math.abs(pos.y - target.y)
         local dz = math.abs(pos.z - target.z)
         if dx <= 1 and dy <= 1 and dz <= 1 then
+            meta:set_int("nav_active", 0)
+            meta:set_string("nav_path", "")
             return -- done
         end
 
@@ -391,21 +408,24 @@ function bot_parsecommand(pos,item)
                 elseif act == "d" then move_bot(pos, "d")
                 elseif act == "cw" then bot_turn_clockwise(pos)
                 elseif act == "ccw" then bot_turn_anticlockwise(pos)
-                end
-                -- update PC on new meta (position_bot copies meta before move)
+                end -- if act
                 local np = pos
                 if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
                 elseif act == "d" then np = {x = pos.x, y = pos.y - 1, z = pos.z}
                 elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
-                end
+                end -- if act
                 minetest.get_meta(np):set_int("PC", PC)
                 return
-            end
-        end
+            end -- if #actions > 0
+        end -- if nav ~= ""
 
         -- recalculate path
         local path = find_path_to_player(pos, facing, target)
-        if path == "done" then return end
+        if path == "done" then
+            meta:set_int("nav_active", 0)
+            meta:set_string("nav_path", "")
+            return
+        end -- if path == "done"
         if path then
             local actions = string.split(path, ",")
             if #actions > 0 then
@@ -420,16 +440,18 @@ function bot_parsecommand(pos,item)
                 elseif act == "d" then move_bot(pos, "d")
                 elseif act == "cw" then bot_turn_clockwise(pos)
                 elseif act == "ccw" then bot_turn_anticlockwise(pos)
-                end
-                -- update PC on new meta
+                end -- if act
                 local np2 = pos
                 if act == "f" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np2 = {x = pos.x - ndir.x, y = pos.y, z = pos.z - ndir.z}
                 elseif act == "d" then np2 = {x = pos.x, y = pos.y - 1, z = pos.z}
                 elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np2 = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
-                end
+                end -- if act
                 minetest.get_meta(np2):set_int("PC", PC)
-            end
-        end
+            end -- if #actions > 0
+        else
+            -- no path: retry next tick
+            meta:set_float("nav_retry", minetest.get_gametime())
+        end -- if path
     elseif item == "vbots2:redstone_toggle" then
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)

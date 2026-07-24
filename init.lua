@@ -151,7 +151,7 @@ vbots2.wipe_programs = function(pos)
     local inv_list = {}
     for i,t in pairs(meta_table.inventory) do
         if i ~= "main" then
-            size = inv:get_size(i)
+            local size = inv:get_size(i)
             for a=1,size do
                 inv:set_stack(i,a, "")
             end

@@ -150,7 +150,6 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                                 nametable[1]=="sign" or
                                 nametable[1]=="go" or
                                 nametable[1]=="redstone" or
-                                nametable[1]=="goto" or
                                 f == "count" then
                             --print("COMMAND!!!!!!!")
                             local leftover = inv:add_item("p"..meta:get_int("program"), ItemStack("vbots2:"..f))

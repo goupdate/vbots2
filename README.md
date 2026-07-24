@@ -91,7 +91,7 @@ Call sub-programs using the function icons at the bottom of the command panel.
 | ![down](textures/vbots_move_down.png) | Move Down | Move one step down |
 | ![home](textures/vbots_move_home.png) | Go Home | Teleport back to the position where the bot was placed |
 | ![go_player](textures/vbots_go_player.png) | Go to Player | Pathfind to owner player, stop 1 block away |
-| ![goto_pos](textures/vbots_goto_pos.png) | Go to Position | Pathfind to stored x,y,z coordinates (set via formspec) |
+ | ![goto_pos](textures/vbots_goto_pos.png) | Go to Position | Pathfind to coords (formspec, defaults to bot pos). Stands on top if target is solid. |
 
 Movement fails if the destination is not empty. **Gravity:** the bot falls automatically if the block below is air (no flying).
 
