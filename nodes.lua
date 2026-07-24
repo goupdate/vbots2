@@ -189,6 +189,16 @@ minetest.register_entity("vbots2:bot_body", {
     on_punch = function(self, puncher, time_from_last_punch, tool_capabilities, dir, damage)
         if not damage then return end
         local hp = self.object:get_hp() - damage
+        -- track damage for damaged_check / turn_danger commands
+        local epos = self.object:get_pos()
+        if epos then
+            local bpos = {x = math.floor(epos.x + 0.5), y = math.floor(epos.y), z = math.floor(epos.z + 0.5)}
+            local meta = minetest.get_meta(bpos)
+            meta:set_float("damage_time", minetest.get_gametime())
+            if puncher and puncher.get_pos then
+                meta:set_string("damage_pos", minetest.serialize(puncher:get_pos()))
+            end
+        end
         if hp <= 0 then
             -- bot destroyed — destroy the node
             local pos = self.object:get_pos()

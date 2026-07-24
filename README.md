@@ -220,6 +220,19 @@ If slot 2 is empty, it checks for **air** (nothing ahead).
 
 Place a number **after** a command to repeat it (N−1) additional times. Works with all commands. ![speed](textures/vbots_mode_speed.png) sets the bot's step rate multiplier.
 
+### Combat
+
+| Icon | Command | Description |
+|------|---------|-------------|
+| ![laser](textures/vbots_laser.png) | **Laser** | Fire at nearest hostile (5 blocks, 90° cone), 2s cooldown with recharge sparks |
+| ![shot](textures/vbots_shot.png) | **Shot** | Throw dark snowball at nearest hostile (15 blocks, 90° cone), 3× stone sword damage, sparks if no target |
+| ![bug_check](textures/vbots_bug_check.png) | **Bug?** | Skip next command if hostile mob within 5 blocks |
+| ![damaged_check](textures/vbots_damaged_check.png) | **Damaged?** | Skip next command if bot was attacked in last 3 seconds |
+| ![turn_danger](textures/vbots_turn_danger.png) | **Turn→** | Turn toward attacker direction (last 3s), sparks if no recent attack |
+
+**Laser & Shot** fire only within a 90° cone in the bot's facing direction.
+**[Damaged?]** and **[Turn→]** track damage via the bot's combat entity — works with any mob attack.
+
 ---
 
 ## New Behaviors

@@ -128,7 +128,7 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                 for f,v in pairs(fields) do
                     -- f1-f6 are single-token (no underscore)
                     local nametable=string.split(f, "_")
-                    if f == "f1" or f == "f2" or f == "f3" or f == "f4" or f == "f5" or f == "f6" or f == "count" or f == "laser" then
+                    if f == "f1" or f == "f2" or f == "f3" or f == "f4" or f == "f5" or f == "f6" or f == "count" or f == "laser" or f == "shot" or f == "turn_danger" then
                         local leftover = inv:add_item("p"..meta:get_int("program"), ItemStack("vbots2:"..f))
                     elseif #nametable>=2 then
                         if nametable[1]=="sub" then

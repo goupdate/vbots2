@@ -339,68 +339,167 @@ function bot_parsecommand(pos,item)
                     end -- if check is air
                 end -- for dz
             end -- for dx
-        end -- for dy
+            end -- for dy
+        end -- if air
     elseif item == "vbots2:laser" then
-        -- check cooldown: 2 seconds between shots
-        local last_shot = meta:get_float("laser_time")
         local now = minetest.get_gametime()
-        if now - last_shot < 2 then return end
-        meta:set_float("laser_time", now)
-        -- find nearest hostile mob within 5 blocks
+        local last = meta:get_float("laser_last")
+        if now - last < 2.0 then
+            -- cooldown: show recharge sparks
+            minetest.add_particlespawner({amount = 3, time = 0.2,
+                minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
+                maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
+                minvel = {x = -0.5, y = 1, z = -0.5}, maxvel = {x = 0.5, y = 3, z = 0.5},
+                minacc = {x = 0, y = -2, z = 0}, maxacc = {x = 0, y = -5, z = 0},
+                minexptime = 0.3, maxexptime = 0.6, minsize = 0.5, maxsize = 1,
+                collisiondetection = false, texture = "vbots_laser_spark.png", glow = 14})
+            return
+        end
+        meta:set_float("laser_last", now)
+        local owner = meta:get_string("owner")
+        local player = minetest.get_player_by_name(owner)
+        if not player then return end
+        local facing_dir = minetest.facedir_to_dir(minetest.get_node(pos).param2)
+        -- find nearest hostile in 5 blocks, within 90° cone
         local nearest, nearest_dist = nil, 999
         for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
             if obj and obj:get_luaentity() then
                 local ent = obj:get_luaentity()
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                   and (ent.type == "monster" or (ent._attack and ent._attack ~= "")) then
-                    local d = vector.distance(pos, obj:get_pos())
-                    if d < nearest_dist then nearest, nearest_dist = obj, d end
+                   and obj ~= player
+                   and (ent.type == "monster" or ent.hostile or ent._is_hostile or ent._attack) then
+                    local epos = obj:get_pos()
+                    if epos then
+                        local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
+                        local tlen = vector.length(to_target)
+                        if tlen > 0 then
+                            to_target = vector.normalize(to_target)
+                            local dot = facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z
+                            if dot >= 0.707 then -- 90° cone (cos 45°)
+                                local d = vector.distance(pos, epos)
+                                if d < nearest_dist then nearest, nearest_dist = obj, d end
+                            end
+                        end
+                    end
                 end
             end
         end
         if not nearest then return end
-        -- apply stone sword damage (fleshy=4)
-        nearest:punch(nearest, 1.0, {full_punch_interval = 0.5, damage_groups = {fleshy = 4}}, nil)
-        -- laser beam particles: yellow-red-orange pulsating line
         local tpos = nearest:get_pos()
-        local dir = vector.subtract(tpos, pos); local len = vector.length(dir)
-        dir = vector.normalize(dir)
-        for i = 0, math.floor(len * 8) do
-            local p = vector.add(pos, vector.multiply(dir, i * 0.125))
+        -- beam particles (0.3s)
+        local beam = vector.subtract(tpos, pos); local blen = vector.length(beam)
+        local bdir = vector.normalize(beam)
+        for i = 0, math.floor(blen * 8) do
+            local p = vector.add(pos, vector.multiply(bdir, i * 0.125))
             minetest.add_particle({pos = p, velocity = {x=0,y=0,z=0},
                 acceleration = {x=0,y=0,z=0}, expirationtime = 0.25,
                 size = 0.35 + math.random() * 0.15, collisiondetection = false,
-                texture = "", glow = 14})
+                texture = "vbots_laser_beam.png", glow = 14})
         end
-        -- sparks at impact
+        -- impact sparks
         for i = 1, 12 do
             minetest.add_particle({pos = tpos,
                 velocity = {x=math.random()-0.5, y=math.random()*2+1, z=math.random()-0.5},
                 acceleration = {x=0, y=-6, z=0}, expirationtime = 0.5 + math.random(),
                 size = 0.2 + math.random()*0.15, collisiondetection = true,
-                texture = "", glow = 10})
+                texture = "vbots_laser_spark.png", glow = 10})
         end
-    elseif item == "vbots2:bug_check" then
-        -- check if hostile mob within 5 blocks
-        local found = false
-        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
+        nearest:punch(player, 0.5, {full_punch_interval = 0.5, damage_groups = {fleshy = 8}}, nil)
+    elseif item == "vbots2:shot" then
+        local owner = meta:get_string("owner")
+        local player = minetest.get_player_by_name(owner)
+        if not player then return end
+        local facing_dir = minetest.facedir_to_dir(minetest.get_node(pos).param2)
+        -- find nearest hostile in 15 blocks, within 90° cone
+        local nearest, nearest_dist = nil, 999
+        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 15)) do
             if obj and obj:get_luaentity() then
                 local ent = obj:get_luaentity()
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                   and (ent.type == "monster" or (ent._attack and ent._attack ~= "")) then
-                    found = true; break
+                   and obj ~= player
+                   and (ent.type == "monster" or ent.hostile or ent._is_hostile or ent._attack) then
+                    local epos = obj:get_pos()
+                    if epos then
+                        local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
+                        local tlen = vector.length(to_target)
+                        if tlen > 0 then
+                            to_target = vector.normalize(to_target)
+                            local dot = facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z
+                            if dot >= 0.707 then
+                                local d = vector.distance(pos, epos)
+                                if d < nearest_dist then nearest, nearest_dist = obj, d end
+                            end
+                        end
+                    end
                 end
             end
         end
-        if found then meta:set_int("skip", 1) else meta:set_int("skip", 2) end
-    end
-                    if found then break end
+        if not nearest then
+            -- no target: sparks from bot
+            minetest.add_particlespawner({amount = 5, time = 0.3,
+                minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
+                maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
+                minvel = {x = -0.5, y = 1, z = -0.5}, maxvel = {x = 0.5, y = 3, z = 0.5},
+                minacc = {x = 0, y = -2, z = 0}, maxacc = {x = 0, y = -5, z = 0},
+                minexptime = 0.3, maxexptime = 0.6, minsize = 0.5, maxsize = 1,
+                collisiondetection = false, texture = "vbots_laser_spark.png", glow = 14})
+            return
+        end
+        -- throw dark snowball: 5x slower than arrow (arrow speed ~20, so 4 m/s)
+        local tpos = nearest:get_pos()
+        local dir = vector.subtract(tpos, pos)
+        local dlen = vector.length(dir)
+        if dlen == 0 then return end
+        dir = vector.normalize(dir)
+        -- spawn dark snowball entity at bot midpoint heading toward target
+        local spawn_pos = {x = pos.x, y = pos.y + 0.6, z = pos.z}
+        local speed = 4
+        local vel = {x = dir.x * speed, y = dir.y * speed + 0.5, z = dir.z * speed}
+        local obj = minetest.add_entity(spawn_pos, "mcl_throwing:dark_snowball")
+        if obj then
+            obj:set_velocity(vel)
+            -- override entity to deal 3x stone sword damage (fleshy=12)
+            local tent = obj:get_luaentity()
+            if tent then tent._damage = 12 end
+        end
+    elseif item == "vbots2:damaged_check" then
+        local now = minetest.get_gametime()
+        local dt = meta:get_float("damage_time")
+        if dt > 0 and now - dt < 3.0 then
+            meta:set_int("skip", 1)
+        else
+            meta:set_int("skip", 2)
+        end
+    elseif item == "vbots2:turn_danger" then
+        local now = minetest.get_gametime()
+        local dt = meta:get_float("damage_time")
+        if dt > 0 and now - dt < 3.0 then
+            local dps = meta:get_string("damage_pos")
+            if dps ~= "" then
+                local ap = minetest.deserialize(dps)
+                if ap then
+                    local dx = ap.x - pos.x; local dz = ap.z - pos.z
+                    if math.abs(dx) > math.abs(dz) then
+                        if dx > 0 then bot_turn_clockwise(pos); bot_turn_clockwise(pos);
+                        else bot_turn_anticlockwise(pos); bot_turn_anticlockwise(pos); end
+                    else
+                        if dz > 0 then bot_turn_clockwise(pos); bot_turn_clockwise(pos);
+                        else bot_turn_anticlockwise(pos); bot_turn_anticlockwise(pos); end
+                    end
+                    return
                 end
-                if found then break end
             end
         end
+        -- no recent attack: sparks
+        minetest.add_particlespawner({amount = 5, time = 0.3,
+            minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
+            maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
+            minvel = {x = -0.5, y = 1, z = -0.5}, maxvel = {x = 0.5, y = 3, z = 0.5},
+            minacc = {x = 0, y = -2, z = 0}, maxacc = {x = 0, y = -5, z = 0},
+            minexptime = 0.3, maxexptime = 0.6, minsize = 0.5, maxsize = 1,
+            collisiondetection = false, texture = "vbots_laser_spark.png", glow = 14})
     elseif item == "vbots2:redstone_toggle" then
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)
