@@ -178,7 +178,15 @@ function bot_parsecommand(pos,item)
         if PR ~= 0 then
             pull_state(pos)
         else
-            vbots2.bot_togglestate(pos, "off")
+            -- find current bot position (may have moved during this tick)
+            local cur_pos = pos
+            local cn = minetest.get_node(pos)
+            if cn.name ~= "vbots2:on" and cn.name ~= "vbots2:off" then
+                local key = meta:get_string("key")
+                local bi = vbots2.bot_info[key]
+                if bi then cur_pos = bi.pos end
+            end
+            vbots2.bot_togglestate(cur_pos, "off")
         end
     elseif item == "vbots2:var_a" then
         meta:set_string("active_var", "a")
@@ -328,8 +336,66 @@ function bot_parsecommand(pos,item)
                             position_bot(pos, check)
                             found = true
                             break
-                        end
-                    end
+                    end -- if check is air
+                end -- for dz
+            end -- for dx
+        end -- for dy
+    elseif item == "vbots2:laser" then
+        -- check cooldown: 2 seconds between shots
+        local last_shot = meta:get_float("laser_time")
+        local now = minetest.get_gametime()
+        if now - last_shot < 2 then return end
+        meta:set_float("laser_time", now)
+        -- find nearest hostile mob within 5 blocks
+        local nearest, nearest_dist = nil, 999
+        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
+            if obj and obj:get_luaentity() then
+                local ent = obj:get_luaentity()
+                if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
+                   and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
+                   and (ent.type == "monster" or (ent._attack and ent._attack ~= "")) then
+                    local d = vector.distance(pos, obj:get_pos())
+                    if d < nearest_dist then nearest, nearest_dist = obj, d end
+                end
+            end
+        end
+        if not nearest then return end
+        -- apply stone sword damage (fleshy=4)
+        nearest:punch(nearest, 1.0, {full_punch_interval = 0.5, damage_groups = {fleshy = 4}}, nil)
+        -- laser beam particles: yellow-red-orange pulsating line
+        local tpos = nearest:get_pos()
+        local dir = vector.subtract(tpos, pos); local len = vector.length(dir)
+        dir = vector.normalize(dir)
+        for i = 0, math.floor(len * 8) do
+            local p = vector.add(pos, vector.multiply(dir, i * 0.125))
+            minetest.add_particle({pos = p, velocity = {x=0,y=0,z=0},
+                acceleration = {x=0,y=0,z=0}, expirationtime = 0.25,
+                size = 0.35 + math.random() * 0.15, collisiondetection = false,
+                texture = "", glow = 14})
+        end
+        -- sparks at impact
+        for i = 1, 12 do
+            minetest.add_particle({pos = tpos,
+                velocity = {x=math.random()-0.5, y=math.random()*2+1, z=math.random()-0.5},
+                acceleration = {x=0, y=-6, z=0}, expirationtime = 0.5 + math.random(),
+                size = 0.2 + math.random()*0.15, collisiondetection = true,
+                texture = "", glow = 10})
+        end
+    elseif item == "vbots2:bug_check" then
+        -- check if hostile mob within 5 blocks
+        local found = false
+        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
+            if obj and obj:get_luaentity() then
+                local ent = obj:get_luaentity()
+                if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
+                   and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
+                   and (ent.type == "monster" or (ent._attack and ent._attack ~= "")) then
+                    found = true; break
+                end
+            end
+        end
+        if found then meta:set_int("skip", 1) else meta:set_int("skip", 2) end
+    end
                     if found then break end
                 end
                 if found then break end

@@ -90,12 +90,15 @@ Call sub-programs using the function icons at the bottom of the command panel.
 |------|---------|-------------|
 | ![forward](textures/vbots_move_forward.png) | Move Forward | Move one step forward |
 | ![backward](textures/vbots_move_backward.png) | Move Backward | Move one step backward |
+| ![up](textures/vbots_move_up.png) | Move Up | Move one step up |
 | ![down](textures/vbots_move_down.png) | Move Down | Move one step down |
-| ![home](textures/vbots_move_home.png) | Go Home | Teleport back to the position where the bot was placed |
-| ![go_player](textures/vbots_go_player.png) | Go to Player | Pathfind to owner player, stop 1 block away |
- | ![goto_pos](textures/vbots_goto_pos.png) | Go to Position | Pathfind to coords (formspec, defaults to bot pos). Stands on top if target is solid. |
+| ![home](textures/vbots_move_home.png) | Go Home | Teleport to creation point |
+| ![go_player](textures/vbots_go_player.png) | Go to Player | Teleport to player |
+| ![goto_pos](textures/vbots_goto_pos.png) | Go to Position | Teleport to coordinates (searches empty spot nearby) |
 
-Movement fails if the destination is not empty. **Gravity:** the bot falls automatically if the block below is air (no flying).
+> **GUI layout:** ![END](textures/vbots_end_program.png) END appears on the same row as ![goto_pos](textures/vbots_goto_pos.png) (right of Go to Position) in the command panel.
+
+Movement fails if the destination is not empty. **Gravity removed:** the bot stays in place even if the block below is air — it can float in mid-air.
 
 ### Turning
 
@@ -118,7 +121,8 @@ Movement fails if the destination is not empty. **Gravity:** the bot falls autom
 | ![build down](textures/vbots_mode_build_down.png) | Build Down | Place a block below the position ahead |
 
 **Building behavior:**
-- If the target is **air** → places the first block from the bot's inventory
+- Build commands **never consume blocks** from the bot's inventory (creative mode — blocks are created out of thin air)
+- If the target is **air** → places the selected block type
 - If the target is a **chest/container** (any node with `container` group) → transfers the first item from inventory (or matching item if filter is placed in next slot)
 - If no items in inventory → nothing happens
 
@@ -215,6 +219,17 @@ If slot 2 is empty, it checks for **air** (nothing ahead).
 |----------------------------------------|------|------|------|------|------|------|
 
 Place a number **after** a command to repeat it (N−1) additional times. Works with all commands. ![speed](textures/vbots_mode_speed.png) sets the bot's step rate multiplier.
+
+---
+
+## New Behaviors
+
+vbots2 introduces several behavioral changes:
+
+- **Creative build mode** — build commands never consume blocks from the bot's inventory. Blocks are created out of thin air, so you don't need to stock the bot with materials.
+- **No gravity** — the bot no longer falls when the block below is air. It can float in mid-air indefinitely, allowing aerial platforms and ceiling work.
+- **Teleport navigation** — ![home](textures/vbots_move_home.png), ![go_player](textures/vbots_go_player.png), and ![goto_pos](textures/vbots_goto_pos.png) all teleport instantly instead of pathfinding. The bot vanishes and reappears at the target.
+- **Move Up** — ![up](textures/vbots_move_up.png) lets the bot move one step upward, complementing the existing Move Down command.
 
 ---
 

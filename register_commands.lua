@@ -83,4 +83,6 @@ register_command("count","Count items in inventory","vbots_count.png")
 register_command("go_player","Go to player","vbots_go_player.png")
 register_command("redstone_toggle","Toggle redstone","vbots_redstone_toggle.png")
 register_command("goto_pos","Go to position","vbots_goto_pos.png")
+register_command("laser","Fire laser at nearest hostile mob","vbots_laser.png")
+register_command("bug_check","Is enemy within 5 blocks?","vbots_bug_check.png")
 

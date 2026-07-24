@@ -45,10 +45,10 @@ local function panel_commands()
         {"turn_clockwise","turn_anticlockwise","turn_random"},
         {"mode_dig_up","mode_dig","mode_dig_down","mode_build_up","mode_build","build_behind","mode_build_down"},
         {"var_a","var_b","var_c","var_d","sign_read","sign_print","count"},
-        {"eq_check","neq_check","dig_check","gt_check","lt_check","gte_check","lte_check","end_program"},
+        {"eq_check","neq_check","dig_check","gt_check","lt_check","gte_check","lte_check"},
         {"mode_speed","number_2","number_3","number_4","number_5","number_6","number_7"},
         {"f1","f2","f3","f4","f5","f6"},
-        {"redstone_toggle","goto_pos"}
+        {"redstone_toggle","goto_pos","end_program","laser","bug_check"}
     }
     local panel = highlight(0,1,7,8,"a","a","f")
     for row,namelist in pairs(commands) do

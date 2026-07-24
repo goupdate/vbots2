@@ -148,6 +148,7 @@ meta:set_int("repeat",0)
     meta:set_int("home_tx",0)
     meta:set_int("home_ty",0)
     meta:set_int("home_tz",0)
+    meta:set_float("laser_last",0)
 end
 
 vbots2.wipe_programs = function(pos)
