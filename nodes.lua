@@ -179,9 +179,10 @@ minetest.register_entity("vbots2:bot_body", {
         visual_size = {x = 0, y = 0, z = 0},
         textures = {"blank.png"},
         hp_max = 20,
-        -- Mobs target entities with type="npc" (monsters don't attack other monsters)
     },
     type = "npc",
+    _attack = 1,
+    hostile = true,
     on_activate = function(self, staticdata)
         self.object:set_armor_groups({fleshy = 100})
         self.object:set_hp(20)
@@ -216,5 +217,76 @@ minetest.register_entity("vbots2:bot_body", {
     end,
     on_death = function(self)
         -- handled by on_punch
+    end,
+})
+
+-- Make MCL/VL mobs target bot_body as a valid attack target
+if minetest.get_modpath("mcl_mobs") or minetest.get_modpath("vl_mobs") then
+    minetest.after(0, function()
+        for name, def in pairs(minetest.registered_entities) do
+            if def.specific_attack and type(def.specific_attack) == "table" then
+                local has_vbots = false
+                for _, t in ipairs(def.specific_attack) do
+                    if t == "vbots2:bot_body" then has_vbots = true; break end
+                end
+                if not has_vbots then
+                    table.insert(def.specific_attack, "vbots2:bot_body")
+                end
+            end
+        end
+    end)
+end -- if mcl_mobs
+
+-- Bot projectile (snowball with gravity, damage on hit)
+minetest.register_entity("vbots2:projectile_snowball", {
+    initial_properties = {
+        physical = true,
+        collide_with_objects = true,
+        collisionbox = {-0.15, -0.15, -0.15, 0.15, 0.15, 0.15},
+        visual = "sprite",
+        visual_size = {x = 0.4, y = 0.4, z = 0.4},
+        textures = {"default_snowball.png"},
+        pointable = false,
+        static_save = false,
+    },
+    _damage = 4,
+    on_activate = function(self, staticdata)
+        self.object:set_acceleration({x = 0, y = -22, z = 0})
+        self._timer = 0
+        self._shooter = nil
+        if staticdata and staticdata ~= "" then
+            local data = minetest.deserialize(staticdata)
+            if data then
+                self._damage = data.damage or 4
+                self._shooter = data.shooter
+            end
+        end
+    end,
+    on_step = function(self, dtime)
+        self._timer = (self._timer or 0) + dtime
+        if self._timer > 5 then self.object:remove(); return end
+        local pos = self.object:get_pos()
+        if not pos then return end
+        local node = minetest.get_node(pos)
+        -- hit solid block → vanish
+        if node.name ~= "air" and node.name ~= "ignore" then
+            local ndef = minetest.registered_nodes[node.name]
+            if ndef and ndef.walkable then
+                self.object:remove()
+                return
+            end
+        end
+        -- hit entity
+        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 0.8)) do
+            if obj ~= self.object and obj:get_luaentity() then
+                local ent = obj:get_luaentity()
+                if ent and ent.name ~= "__builtin:item" and ent.name ~= "vbots2:projectile_snowball" then
+                    local shooter = self._shooter
+                    obj:punch(shooter, 0.5, {full_punch_interval = 0.5, damage_groups = {fleshy = self._damage}}, nil)
+                    self.object:remove()
+                    return
+                end
+            end
+        end
     end,
 })

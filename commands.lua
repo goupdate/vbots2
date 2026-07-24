@@ -455,14 +455,17 @@ function bot_parsecommand(pos,item)
         dir = vector.normalize(dir)
         -- spawn dark snowball entity at bot midpoint heading toward target
         local spawn_pos = {x = pos.x, y = pos.y + 0.6, z = pos.z}
-        local speed = 4
-        local vel = {x = dir.x * speed, y = dir.y * speed + 0.5, z = dir.z * speed}
-        local obj = minetest.add_entity(spawn_pos, "mcl_throwing:dark_snowball")
+        -- parabolic: 1 block drop per 10 blocks forward at speed=25, gravity~-22
+        local speed = 25
+        local vel = {x = dir.x * speed, y = dir.y * speed + (speed * 0.05), z = dir.z * speed}
+        local obj = minetest.add_entity(spawn_pos, "vbots2:projectile_snowball")
         if obj then
             obj:set_velocity(vel)
-            -- override entity to deal 3x stone sword damage (fleshy=12)
             local tent = obj:get_luaentity()
-            if tent then tent._damage = 12 end
+            if tent then
+                tent._damage = 12
+                tent._shooter = player
+            end
         end
     elseif item == "vbots2:damaged_check" then
         local now = minetest.get_gametime()
