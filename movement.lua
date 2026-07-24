@@ -54,33 +54,44 @@ function position_bot(pos,newpos)
                        ndef.groups.flower or ndef.groups.sapling or ndef.groups.leaves
         end
         local is_door = ndef and ndef.groups and ndef.groups.door
-        if moveto_node.name == "air" or is_plant or is_door then
-            -- handle door: right-click toggle, then swap bot/door positions
+        if moveto_node.name == "air" or is_plant or is_door or is_walkable(newpos) then
+            -- dig through non-plant walkable nodes (leaves, foliage, etc.)
+            if not is_plant and not is_door and moveto_node.name ~= "air" then
+                minetest.set_node(newpos, {name = "air"})
+            end
+            -- handle door: open → move bot through → close behind
             if is_door and player then
-                local door_pos = newpos
-                local door_node = moveto_node
-                local door_def = minetest.registered_nodes[door_node.name]
+                local door_def = minetest.registered_nodes[moveto_node.name]
+                -- open door
                 if door_def and door_def.on_rightclick then
-                    door_def.on_rightclick(door_pos, door_node, player)
+                    door_def.on_rightclick(newpos, moveto_node, player)
                 end
-                -- swap: bot to door position, door to bot position
+                -- save door state (both bottom + top parts)
+                local door_top_pos = {x = newpos.x, y = newpos.y + 1, z = newpos.z}
+                local door_bottom = minetest.get_node(newpos)
+                local door_top = minetest.get_node(door_top_pos)
+                -- move bot to door position
                 local bot_node = minetest.get_node(pos)
                 local hold = meta:to_table()
                 meta:set_string("moving", "1")
-                -- place bot at door position
-                minetest.swap_node(pos, {name = door_node.name, param2 = door_node.param2})
-                minetest.swap_node(door_pos, {name = bot_node.name, param2 = bot_node.param2})
-                minetest.get_node_timer(door_pos):set(1/R, 0)
+                minetest.set_node(newpos, {name = bot_node.name, param2 = bot_node.param2})
+                minetest.get_node_timer(newpos):set(1/R, 0)
                 if hold then
-                    minetest.get_meta(door_pos):from_table(hold)
+                    minetest.get_meta(newpos):from_table(hold)
                 end
-                -- close door behind bot
+                minetest.set_node(door_top_pos, {name = "air"})
+                -- place door at old bot position
+                minetest.set_node(pos, {name = door_bottom.name, param2 = door_bottom.param2})
+                if door_top.name ~= "air" then
+                    minetest.set_node({x = pos.x, y = pos.y + 1, z = pos.z}, {name = door_top.name, param2 = door_top.param2})
+                end
+                -- close door behind
                 local behind_node = minetest.get_node(pos)
                 local behind_def = minetest.registered_nodes[behind_node.name]
                 if behind_def and behind_def.on_rightclick then
                     behind_def.on_rightclick(pos, behind_node, player)
                 end
-                local dd = minetest.get_node(door_pos)
+                minetest.check_for_falling(newpos)
                 return
             end
             if is_plant then

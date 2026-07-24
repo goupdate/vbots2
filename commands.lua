@@ -136,7 +136,14 @@ function bot_parsecommand(pos,item)
         end
     elseif item == "vbots2:mode_dig" then
         bot_dig(pos,0)
-        move_bot(pos,"f")
+        -- skip move if front is container (chest/bot): bot already took items
+        local fn, fp = get_front_node(pos)
+        local fndef = minetest.registered_nodes[fn.name]
+        local is_container = fndef and fndef.groups and fndef.groups.container
+        local is_bot = fn.name:find("^vbots2:")
+        if not is_container and not is_bot then
+            move_bot(pos,"f")
+        end
     elseif item == "vbots2:mode_dig_down" then
         bot_dig(pos,-1)
         move_bot(pos,"d")
@@ -289,28 +296,32 @@ function bot_parsecommand(pos,item)
             val = meta:get_int("var_" .. var_name)
         end
         local front_node, front_pos = get_front_node(pos)
-        if not front_node.name:find("sign") then
-            if not minetest.is_protected(front_pos, meta:get_string("owner")) then
+        local has_sign = front_node.name:find("sign")
+        if not has_sign then
+            local fdef = minetest.registered_nodes[front_node.name]
+            local can_place = (front_node.name == "air" or (fdef and fdef.buildable_to))
+            if can_place and not minetest.is_protected(front_pos, meta:get_string("owner")) then
                 local sign_name = minetest.registered_nodes["mcl_signs:standing_sign_bamboo"]
                     and "mcl_signs:standing_sign_bamboo"
                     or minetest.registered_nodes["default:sign_wall_wood"]
                     and "default:sign_wall_wood"
                     or nil
                 if sign_name then
-                    local wdir = minetest.facedir_to_dir(minetest.get_node(pos).param2)
-                    local wm
-                    if wdir.z == 1 then wm = 5
-                    elseif wdir.z == -1 then wm = 4
-                    elseif wdir.x == 1 then wm = 3
-                    elseif wdir.x == -1 then wm = 2
-                    else wm = 2 end
-                    minetest.set_node(front_pos, {name = sign_name, param2 = wm})
+                    -- standing sign: degrotate, param2 = degrees / 1.5 (from mcl_signs on_place)
+                    local wall_dir = minetest.facedir_to_dir(minetest.get_node(pos).param2)
+                    local yaw = math.atan2(wall_dir.x, -wall_dir.z)
+                    if yaw < 0 then yaw = yaw + 2 * math.pi end
+                    local rot = yaw * 180 / math.pi / 1.5
+                    local sign_p2 = math.floor(0.5 + rot / 15) * 15
+                    minetest.set_node(front_pos, {name = sign_name, param2 = sign_p2})
+                    has_sign = true
                 end
             end
         end
-        local sign_meta = minetest.get_meta(front_pos)
-        local txt = tostring(val)
-        sign_meta:set_string("text", txt)
+        if has_sign then
+            local sign_meta = minetest.get_meta(front_pos)
+            local txt = tostring(val)
+            sign_meta:set_string("text", txt)
         sign_meta:set_string("infotext", txt)
         sign_meta:set_string("formspec", "field[text;;${text}]")
         -- VoxeLibre/MCL: set utext + update entity texture
@@ -319,7 +330,8 @@ function bot_parsecommand(pos,item)
             if mcl_signs.update_sign then
                 mcl_signs.update_sign(front_pos)
             end
-        end
+        end -- if mcl_signs
+        end -- if has_sign
     elseif item == "vbots2:count" then
         -- count items matching the block in the argument slot, store in active_var
         local inv = meta:get_inventory()

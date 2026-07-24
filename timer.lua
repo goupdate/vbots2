@@ -83,8 +83,7 @@ function bot_handletimer(pos)
             or command == "vbots2:lte_check" or command == "vbots2:eq_check"
             or command == "vbots2:neq_check" or command == "vbots2:dig_check"
             or command == "vbots2:sign_read" or command == "vbots2:sign_print"
-            or command == "vbots2:count"
-            or command:match("^vbots2:f%d$"))
+            or command == "vbots2:count")
         if not no_repeat and hasarg[1] == "vbots2:number" then
             if tonumber(hasarg[2])>1 then
                 meta:set_int("repeat", hasarg[2]-1)
