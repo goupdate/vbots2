@@ -62,6 +62,34 @@
 <p><strong>Сломайте бота</strong> ударив чем угодно кроме пустой руки. Предметы из инвентаря выпадут на землю.</p>
 </li>
 </ul>
+<h3>Крафт</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Железо</td>
+<td>Железо</td>
+<td>Железо</td>
+</tr>
+<tr>
+<td>Железо</td>
+<td>Редстоун</td>
+<td>Железо</td>
+</tr>
+<tr>
+<td>Железо</td>
+<td>Железо</td>
+<td>Железо</td>
+</tr>
+</tbody>
+</table>
+<p>→ <strong>1 Вбот (неактивный)</strong></p>
 <hr />
 <h2>Главное Меню</h2>
 <p><img alt="Main Menu 1" src="images/doc_menu1.png" /></p>
@@ -95,7 +123,11 @@
 <td>Открывает меню загрузки для выбора, переименования или удаления сохранённых программ</td>
 </tr>
 <tr>
-<td><img alt="reset" src="textures/vbots_gui_nuke.png" /> <strong>Сброс</strong></td>
+<td><img alt="removeall" src="textures/vbots_gui_nuke.png" /> <strong>Удалить Всех</strong></td>
+<td>1-е нажатие: остановить всех. 2-е (в теч. 2с): уничтожить всех ботов</td>
+</tr>
+<tr>
+<td><img alt="reset" src="textures/vbots_gui_reset.png" /> <strong>Сброс</strong></td>
 <td>Очищает все программы (главную и подпрограммы), но сохраняет инвентарь</td>
 </tr>
 <tr>
@@ -168,11 +200,6 @@
 <td>Один шаг назад</td>
 </tr>
 <tr>
-<td><img alt="up" src="textures/vbots_move_up.png" /></td>
-<td>Вверх</td>
-<td>Один шаг вверх</td>
-</tr>
-<tr>
 <td><img alt="down" src="textures/vbots_move_down.png" /></td>
 <td>Вниз</td>
 <td>Один шаг вниз</td>
@@ -187,9 +214,14 @@
 <td>К игроку</td>
 <td>Поиск пути к владельцу, остановка в 1 блоке</td>
 </tr>
+<tr>
+<td><img alt="goto_pos" src="textures/vbots_goto_pos.png" /></td>
+<td>К позиции</td>
+<td>Путь к координатам (formspec, по умолчанию — позиция бота). Встаёт сверху если цель — блок.</td>
+</tr>
 </tbody>
 </table>
-<p>Движение невозможно, если целевая позиция не пуста.</p>
+<p>Движение невозможно, если целевая позиция не пуста. <strong>Гравитация:</strong> бот падает если под ним воздух (не летает).</p>
 <h3>Повороты</h3>
 <table>
 <thead>
@@ -235,7 +267,7 @@
 <tr>
 <td><img alt="dig up" src="textures/vbots_mode_dig_up.png" /></td>
 <td>Копать вверх</td>
-<td>Копает блок сверху и поднимается</td>
+<td>Копает блок сверху (остаётся на месте, не летает)</td>
 </tr>
 <tr>
 <td><img alt="dig down" src="textures/vbots_mode_dig_down.png" /></td>
