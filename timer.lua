@@ -30,14 +30,6 @@ function bot_handletimer(pos)
     bot_pickup_items(pos)
     local meta = minetest.get_meta(pos)
 
-    -- gravity: fall if no block below
-    local below = {x = pos.x, y = pos.y - 1, z = pos.z}
-    if minetest.get_node(below).name == "air" then
-        move_bot(pos, "d")
-        meta:set_string("nav_path", "")  -- invalidate cached path
-        return true
-    end
-
     -- sync minimap marker position + color
     local bot_key = meta:get_string("key")
     local bi = vbots2.bot_info[bot_key]

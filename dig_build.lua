@@ -185,10 +185,8 @@ function bot_build(pos, buildy, filter, mode)
                     a=a+1
                 end
                 if found then
-                    local got = inv:remove_item("main",ItemStack(found))
-                    if got:get_count() == 1 then
-                        minetest.set_node(buildpos,{name=found})
-                    end
+                    minetest.set_node(buildpos, {name = found})
+                    -- creative: do not consume items
                 end
             end
         else
