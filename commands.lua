@@ -370,14 +370,26 @@ function bot_parsecommand(pos,item)
     elseif item == "vbots2:goto_pos" then
         local PC = meta:get_int("PC")
         local PR = meta:get_int("PR")
-        local inv = meta:get_inventory()
-        local smeta = inv:get_stack("p"..PR, PC):get_meta()
-        local tx = smeta:get_int("pos_x")
-        local ty = smeta:get_int("pos_y")
-        local tz = smeta:get_int("pos_z")
+        -- read target from meta (stored on first call) or from item stack
+        local tx = meta:get_int("goto_tx")
+        local ty = meta:get_int("goto_ty")
+        local tz = meta:get_int("goto_tz")
         if tx == 0 and ty == 0 and tz == 0 then
-            return -- no coords set, skip
-        end
+            -- first call: read coords from item stack at PC-1
+            local inv = meta:get_inventory()
+            local smeta = inv:get_stack("p"..PR, PC-1):get_meta()
+            tx = smeta:get_int("pos_x")
+            ty = smeta:get_int("pos_y")
+            tz = smeta:get_int("pos_z")
+            if tx == 0 and ty == 0 and tz == 0 then
+                return -- no coords set, skip
+            end -- if tx
+            meta:set_int("goto_tx", tx)
+            meta:set_int("goto_ty", ty)
+            meta:set_int("goto_tz", tz)
+            meta:set_int("nav_active", 1)
+            meta:set_int("nav_pr", PR)
+        end -- if tx == 0
         local target = resolve_goto_target({x = tx, y = ty, z = tz})
         local node = minetest.get_node(pos)
         local facing = node.param2
@@ -388,9 +400,13 @@ function bot_parsecommand(pos,item)
         local dz = math.abs(pos.z - target.z)
         if dx <= 1 and dy <= 1 and dz <= 1 then
             meta:set_int("nav_active", 0)
+            meta:set_int("goto_tx", 0)
+            meta:set_int("goto_ty", 0)
+            meta:set_int("goto_tz", 0)
             meta:set_string("nav_path", "")
+            meta:set_int("PC", PC - 1)
             return -- done
-        end
+        end -- if at goal
 
         -- cached path
         local nav = meta:get_string("nav_path")
@@ -414,7 +430,7 @@ function bot_parsecommand(pos,item)
                 elseif act == "d" then np = {x = pos.x, y = pos.y - 1, z = pos.z}
                 elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
                 end -- if act
-                minetest.get_meta(np):set_int("PC", PC)
+                minetest.get_meta(np):set_int("PC", PC - 1)
                 return
             end -- if #actions > 0
         end -- if nav ~= ""
@@ -423,6 +439,9 @@ function bot_parsecommand(pos,item)
         local path = find_path_to_player(pos, facing, target)
         if path == "done" then
             meta:set_int("nav_active", 0)
+            meta:set_int("goto_tx", 0)
+            meta:set_int("goto_ty", 0)
+            meta:set_int("goto_tz", 0)
             meta:set_string("nav_path", "")
             return
         end -- if path == "done"
@@ -446,7 +465,7 @@ function bot_parsecommand(pos,item)
                 elseif act == "d" then np2 = {x = pos.x, y = pos.y - 1, z = pos.z}
                 elseif act == "j" then local nd = minetest.get_node(pos); local ndir = minetest.facedir_to_dir(nd.param2); np2 = {x = pos.x - ndir.x, y = pos.y + 1, z = pos.z - ndir.z}
                 end -- if act
-                minetest.get_meta(np2):set_int("PC", PC)
+                minetest.get_meta(np2):set_int("PC", PC - 1)
             end -- if #actions > 0
         else
             -- no path: retry next tick
