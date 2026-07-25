@@ -428,6 +428,23 @@ function bot_parsecommand(pos,item)
                 texture = "vbots_laser_spark.png", glow = 10})
         end
         vbots2.log(meta:get_string("name"), string.format("LASER HIT %s aim=%.1f,%.1f,%.1f", tostring(nearest:get_luaentity() and nearest:get_luaentity().name or "?"), aim_pos.x, aim_pos.y, aim_pos.z))
+        -- line of sight: manual step-through (raycast API unreliable in 5.14)
+        local step_count = math.floor(blen) + 1
+        local blocked = false
+        for s = 1, step_count do
+            local ck = vector.add(pos, vector.multiply(bdir, s * 0.5))
+            ck = {x = math.floor(ck.x + 0.5), y = math.floor(ck.y), z = math.floor(ck.z + 0.5)}
+            local cn = minetest.get_node(ck).name
+            if cn ~= "air" and cn ~= "ignore" then
+                local cdef = minetest.registered_nodes[cn]
+                if cdef and cdef.walkable then blocked = true; break end
+            end
+        end
+        if blocked then
+            vbots2.log(meta:get_string("name"), "LASER BLOCKED by obstacle")
+            meta:set_float("laser_last", now)
+            return
+        end
         -- direct damage (skip MCL punch system which crashes on nil hitter)
         local ent = nearest:get_luaentity()
         if ent and ent.object then
@@ -436,15 +453,19 @@ function bot_parsecommand(pos,item)
         end
         meta:set_float("laser_last", now)
     elseif item == "vbots2:shot" then
+        vbots2.log(meta:get_string("name"), "SHOT FIRING at " .. pos.x .. "," .. pos.y .. "," .. pos.z)
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)
         if not player then return end
         local facing_dir = minetest.facedir_to_dir(minetest.get_node(pos).param2)
         -- find nearest hostile in 20 blocks, within 90° cone
         local nearest, nearest_dist = nil, 999
-        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 20)) do
+        local all_ents = minetest.get_objects_inside_radius(pos, 20)
+        vbots2.log(meta:get_string("name"), "SHOT SCAN radius=20 found=" .. #all_ents)
+        for _, obj in ipairs(all_ents) do
             if obj and obj:get_luaentity() then
                 local ent = obj:get_luaentity()
+                vbots2.log(meta:get_string("name"), "SHOT ENTITY: " .. (ent.name or "?"))
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
                     and obj ~= player and obj:get_player_name() == ""
