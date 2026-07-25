@@ -482,6 +482,8 @@ function bot_parsecommand(pos,item)
         end
         -- throw dark snowball: 5x slower than arrow (arrow speed ~20, so 4 m/s)
         local tpos = nearest:get_pos()
+        local tent2 = nearest:get_luaentity()
+        vbots2.log(meta:get_string("name"), "SHOT TARGET " .. (tent2 and tent2.name or "?") .. " at " .. string.format("%.1f,%.1f,%.1f", tpos.x, tpos.y, tpos.z))
         local dir = vector.subtract(tpos, pos)
         local dlen = vector.length(dir)
         if dlen == 0 then return end
@@ -493,12 +495,15 @@ function bot_parsecommand(pos,item)
         local vel = {x = dir.x * speed, y = dir.y * speed + 9, z = dir.z * speed}
         local obj = minetest.add_entity(spawn_pos, "vbots2:projectile_snowball")
         if obj then
+            vbots2.log(meta:get_string("name"), "SHOT SPAWNED vel=" .. string.format("%.0f,%.0f,%.0f", vel.x, vel.y, vel.z))
             obj:set_velocity(vel)
             local tent = obj:get_luaentity()
             if tent then
                 tent._damage = 12
                 tent._shooter = player
             end
+        else
+            vbots2.log(meta:get_string("name"), "SHOT FAILED to spawn projectile")
         end
     elseif item == "vbots2:damaged_check" then
         local now = minetest.get_gametime()
