@@ -373,7 +373,39 @@ elseif item == "vbots2:turn_danger" then
                 end
             end
         end
-        -- no target: sparks only, don"t turn
+        -- no recent attack: find nearest hostile in 10 blocks
+        local nearest, nearest_dist = nil, 999
+        local owner = meta:get_string("owner")
+        local player = minetest.get_player_by_name(owner)
+        if player then
+            for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 10)) do
+                if obj and obj:get_luaentity() then
+                    local ent = obj:get_luaentity()
+                    if is_valid_target(ent, obj, player) and is_hostile_entity(ent) then
+                        local ep = obj:get_pos()
+                        if ep then
+                            local d = vector.distance(pos, ep)
+                            if d < nearest_dist then nearest, nearest_dist = obj, d end
+                        end
+                    end
+                end
+            end
+        end
+        if nearest then
+            local ep = nearest:get_pos()
+            if ep then
+                local dx = ep.x - pos.x; local dz = ep.z - pos.z
+                if math.abs(dx) > math.abs(dz) then
+                    if dx > 0 then bot_turn_clockwise(pos); bot_turn_clockwise(pos);
+                    else bot_turn_anticlockwise(pos); bot_turn_anticlockwise(pos); end
+                else
+                    if dz > 0 then bot_turn_clockwise(pos); bot_turn_clockwise(pos);
+                    else bot_turn_anticlockwise(pos); bot_turn_anticlockwise(pos); end
+                end
+                return
+            end
+        end
+        -- no hostile nearby: sparks
         minetest.add_particlespawner({amount = 5, time = 0.3,
             minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
             maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
