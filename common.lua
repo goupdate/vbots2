@@ -42,6 +42,134 @@ function interact(player,pos,isempty)
     return false
 end
 
+function bot_shoot(pos, meta, cfg)
+    local P = cfg.log_prefix or "COMBAT"
+    vbots2.log(meta:get_string("name"), P .. " FIRING at " .. pos.x .. "," .. pos.y .. "," .. pos.z)
+    local now = minetest.get_gametime()
+    local last = meta:get_float(cfg.cooldown_key)
+    if now - last < cfg.cooldown_time then
+        vbots2.log(meta:get_string("name"), P .. " COOLDOWN")
+        minetest.add_particlespawner({amount = 3, time = 0.2,
+            minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
+            maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
+            minvel = {x = -0.5, y = 1, z = -0.5}, maxvel = {x = 0.5, y = 3, z = 0.5},
+            minacc = {x = 0, y = -2, z = 0}, maxacc = {x = 0, y = -5, z = 0},
+            minexptime = 0.3, maxexptime = 0.6, minsize = 0.5, maxsize = 1,
+            collisiondetection = false, texture = "vbots_laser_spark.png", glow = 14})
+        return
+    end
+    meta:set_float(cfg.cooldown_key, now)
+    local owner = meta:get_string("owner")
+    local player = minetest.get_player_by_name(owner)
+    if not player then return end
+    local facing_dir = minetest.facedir_to_dir(minetest.get_node(pos).param2)
+    local nearest, nearest_dist = nil, 999
+    local all_ents = minetest.get_objects_inside_radius(pos, cfg.radius)
+    vbots2.log(meta:get_string("name"), P .. " SCAN radius=" .. cfg.radius .. " found=" .. #all_ents)
+    for _, obj in ipairs(all_ents) do
+        if obj and obj:get_luaentity() then
+            local ent = obj:get_luaentity()
+            if is_valid_target(ent, obj, player) and is_hostile_entity(ent) then
+                local epos = obj:get_pos()
+                if epos then
+                    local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
+                    local d = vector.length(to_target)
+                    if d > 0 then
+                        to_target = vector.normalize(to_target)
+                        local fdot = -(facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z)
+                        vbots2.log(meta:get_string("name"), P .. " CANDIDATE " .. (ent.name or "?") .. " dist=" .. math.floor(d) .. " fdot=" .. string.format("%.2f", fdot))
+                        if fdot >= 0.707 and d < nearest_dist then nearest, nearest_dist = obj, d end
+                    end
+                end
+            end
+        end
+    end
+    if not nearest then
+        vbots2.log(meta:get_string("name"), P .. " NO TARGET")
+        minetest.add_particlespawner({amount = 5, time = 0.3,
+            minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
+            maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
+            minvel = {x = -0.5, y = 1, z = -0.5}, maxvel = {x = 0.5, y = 3, z = 0.5},
+            minacc = {x = 0, y = -2, z = 0}, maxacc = {x = 0, y = -5, z = 0},
+            minexptime = 0.3, maxexptime = 0.6, minsize = 0.5, maxsize = 1,
+            collisiondetection = false, texture = "vbots_laser_spark.png", glow = 14})
+        return
+    end
+    local tpos = nearest:get_pos()
+    local aim_pos = {x = tpos.x, y = (tpos.y or 0) + 1, z = tpos.z}
+    -- LOS check
+    local eye = {x = pos.x, y = pos.y + 0.6, z = pos.z}
+    local beam_vec = vector.subtract(aim_pos, eye)
+    local beam_len = vector.length(beam_vec)
+    local blocked = false
+    if beam_len > 0 then
+        local beam_dir = vector.normalize(beam_vec)
+        for s = 1, math.floor(beam_len * 2) do
+            local p = vector.add(eye, vector.multiply(beam_dir, s * 0.5))
+            local pnode = minetest.get_node({x=math.floor(p.x+0.5), y=math.floor(p.y+0.5), z=math.floor(p.z+0.5)})
+            local pndef = minetest.registered_nodes[pnode.name]
+            if pndef and pndef.walkable then
+                local g = pndef.groups or {}
+                if not g.flora and not g.grass and not g.plant and not g.flower and not g.torch and not g.attached_node and not g.leaves then
+                    blocked = true; break
+                end
+            end
+        end
+    end
+    if blocked then
+        vbots2.log(meta:get_string("name"), P .. " BLOCKED by wall")
+        local bp = vector.add(eye, vector.multiply(beam_vec, 0.5))
+        for i = 1, 6 do
+            minetest.add_particle({pos = bp, velocity = {x=math.random()-0.5, y=math.random()*2+1, z=math.random()-0.5},
+                acceleration = {x=0, y=-6, z=0}, expirationtime = 0.5 + math.random(),
+                size = 0.2 + math.random()*0.15, collisiondetection = true,
+                texture = "vbots_laser_spark.png", glow = 10})
+        end
+        return
+    end
+    if cfg.is_shot then
+        -- SHOT: spawn projectile
+        local dir = vector.subtract(tpos, pos)
+        if vector.length(dir) == 0 then return end
+        dir = vector.normalize(dir)
+        local spawn_pos = {x = pos.x, y = pos.y + 0.6, z = pos.z}
+        local vel = {x = dir.x * 25, y = dir.y * 25 + 9, z = dir.z * 25}
+        local obj = minetest.add_entity(spawn_pos, "vbots2:projectile_snowball")
+        if obj then
+            vbots2.log(meta:get_string("name"), P .. " SPAWNED vel=" .. string.format("%.0f,%.0f,%.0f", vel.x, vel.y, vel.z))
+            obj:set_velocity(vel)
+            local tent = obj:get_luaentity()
+            if tent then tent._damage = cfg.damage; tent._shooter = player end
+            minetest.sound_play("mcl_bows_bow_shoot", {pos = pos, max_hear_distance = 16})
+        else
+            vbots2.log(meta:get_string("name"), P .. " FAILED to spawn")
+        end
+    else
+        -- LASER: beam + impact + direct damage
+        local beam_dir = vector.normalize(beam_vec)
+        for i = 0, math.floor(beam_len * 8) do
+            local p = vector.add(eye, vector.multiply(beam_dir, i * 0.125))
+            minetest.add_particle({pos = p, velocity = {x=0,y=0,z=0},
+                acceleration = {x=0,y=0,z=0}, expirationtime = 1.0,
+                size = 0.7 + math.random() * 0.3, collisiondetection = false,
+                texture = "vbots_laser_spark.png", glow = 14})
+        end
+        for i = 1, 12 do
+            minetest.add_particle({pos = aim_pos, velocity = {x=math.random()-0.5, y=math.random()*2+1, z=math.random()-0.5},
+                acceleration = {x=0, y=-6, z=0}, expirationtime = 0.5 + math.random(),
+                size = 0.2 + math.random()*0.15, collisiondetection = true,
+                texture = "vbots_laser_spark.png", glow = 10})
+        end
+        local ent = nearest:get_luaentity()
+        if ent and ent.object then
+            local hp_before = ent.object:get_hp()
+            local hp_after = math.max(0, hp_before - cfg.damage)
+            ent.object:set_hp(hp_after)
+            vbots2.log(meta:get_string("name"), string.format(P .. " DMG %s aim=%.1f,%.1f,%.1f hp:%d→%d", tostring(ent.name), aim_pos.x, aim_pos.y, aim_pos.z, hp_before, hp_after))
+        end
+    end
+end
+
 function is_valid_target(ent, obj, player)
     if not ent or not ent.name then return false end
     if ent.name == "__builtin:item" then return false end
