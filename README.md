@@ -224,16 +224,19 @@ Place a number **after** a command to repeat it (N−1) additional times. Works 
 
 | Icon | Command | Description |
 |------|---------|-------------|
-| ![laser](textures/vbots_laser.png) | **Laser** | Fire at nearest hostile (5 blocks, 90° cone, damage=20, 2s cooldown). 2-shot zombie kill. |
-| ![shot](textures/vbots_shot.png) | **Shot** | Throw snowball at nearest hostile (20 blocks, 90° cone, damage=40, 8s cooldown). 1-shot zombie kill. |
+| ![laser](textures/vbots_laser.png) | **Laser** | Fire at nearest hostile (10 blocks, 90° cone, damage=10, 4s cooldown, recharges with sparks). 2-shot zombie kill. |
+| ![shot](textures/vbots_shot.png) | **Shot** | Throw snowball at nearest hostile (30 blocks, 90° cone, damage=40, 6s cooldown, projectile speed ~6.7). 1-shot zombie kill. |
 | ![bug_check](textures/vbots_bug_check.png) | **Bug?** | Skip next command if hostile mob within 5 blocks |
 | ![damaged_check](textures/vbots_damaged_check.png) | **Damaged?** | Skip next command if bot was attacked in last 3 seconds |
-| ![turn_danger](textures/vbots_turn_danger.png) | **Turn→** | Turn toward attacker direction (last 3s). Falls back to nearest hostile in 20 blocks. |
+| ![turn_danger](textures/vbots_turn_danger.png) | **Turn→** | Turn toward attacker direction (last 3s). Sparks only if no recent attack. |
 
-**Laser & Shot** fire only within a 90° cone in the bot's facing direction.
+**Laser & Shot** fire only within a 90° cone in the bot's facing direction. Both aim at the target's center (y+1) and perform a line-of-sight check (ignores flora, grass, plants, flowers, torches, leaves).
+**Shot** spawns a projectile (`vbots2:projectile_snowball`) with snowball texture, direct flight path (no gravity), speed ~6.7 blocks/s (~3s per 20 blocks), 1.5-block hit radius, and 5s timeout.
 **[Damaged?]** and **[Turn→]** track damage via the bot's combat entity (`vbots2:bot_body`) — works with any mob attack.
-Bot uses `is_hostile_entity()`: checks `type=="monster"`, `hostile`, `_attack`, `passive==false` flags on runtime entity + registered definition fallback.
-Zombie HP = 20. Bot body HP = 20. Mobs target bot body via `specific_attack` table injection at mod load.
+Bot uses `is_hostile_entity()`: checks `type=="monster"`, `hostile`, `_is_hostile`, `_attack`, `passive==false` flags on runtime entity + registered definition fallback.
+`is_valid_target()` excludes dropped items, vbots2:* entities, mcl_burning:*, mcl_wieldview:*, and any player.
+Bot body (`vbots2:bot_body`): type=animal, HP=20, invisible (`visual_size={0,0,0}`), has `hostile=true` and `_attack=1` flags so mobs naturally target it. Mobs with `specific_attack` table get `"vbots2:bot_body"` added via unconditional injection at mod load (1s delay).
+Zombie HP = 20.
 
 ---
 
