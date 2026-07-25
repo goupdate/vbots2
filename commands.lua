@@ -410,22 +410,7 @@ function bot_parsecommand(pos,item)
         local beam = vector.subtract(aim_pos, pos); local blen = vector.length(beam)
         local bdir = vector.normalize(beam)
         -- LOS check FIRST: step-through at 0.2 block intervals
-        local blocked = false
-        for s = 1, math.floor(blen * 5) + 1 do
-            local ck = vector.add(pos, vector.multiply(bdir, s * 0.2))
-            ck = {x = math.floor(ck.x + 0.5), y = math.floor(ck.y), z = math.floor(ck.z + 0.5)}
-            local cn = minetest.get_node(ck).name
-            if cn ~= "air" and cn ~= "ignore" then
-                local cdef = minetest.registered_nodes[cn]
-                if cdef and cdef.walkable then blocked = true; break end
-            end
-        end
-        if blocked then
-            vbots2.log(meta:get_string("name"), "LASER BLOCKED by wall")
-            meta:set_float("laser_last", now)
-            return
-        end
-        -- beam particles (after LOS: only if clear shot)
+        -- beam particles
         for i = 0, math.floor(blen * 8) do
             local p = vector.add(pos, vector.multiply(bdir, i * 0.125))
             minetest.add_particle({pos = p, velocity = {x=0,y=0,z=0},
@@ -464,9 +449,9 @@ function bot_parsecommand(pos,item)
             if obj and obj:get_luaentity() then
                 local ent = obj:get_luaentity()
                 vbots2.log(meta:get_string("name"), "SHOT ENTITY: " .. (ent.name or "?"))
-                if ent.name ~= "__builtin:item"
-                    and is_valid_target(ent, obj, player)
-                    and is_hostile_entity(ent) then
+                 if ent.name ~= "__builtin:item"
+                     and is_valid_target(ent, obj, player)
+                     and is_hostile_entity(ent) then
                         local epos = obj:get_pos()
                         if epos then
                             local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
@@ -474,7 +459,8 @@ function bot_parsecommand(pos,item)
                             if d > 0 then
                                 to_target = vector.normalize(to_target)
                                 local fdot = -(facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z)
-                                if fdot >= 0.707 then
+                                vbots2.log(meta:get_string("name"), "SHOT CANDIDATE " .. (ent.name or "?") .. " dist=" .. math.floor(d) .. " fdot=" .. string.format("%.2f", fdot))
+                                if fdot >= 0.707 then -- 90° cone (cos 45°)
                                     if d < nearest_dist then nearest, nearest_dist = obj, d end
                                 end
                         end
