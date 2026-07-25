@@ -368,23 +368,23 @@ function bot_parsecommand(pos,item)
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
                    and obj ~= player
-                   and (ent.type == "monster" or ent.hostile or ent._is_hostile or ent._attack) then
+                   and (ent.type == "monster" or ent.type == "animal" or ent.hostile
+                        or ent._is_hostile or ent._attack or ent.passive == false) then
                     local epos = obj:get_pos()
                     if epos then
                         local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
-                        local tlen = vector.length(to_target)
-                        if tlen > 0 then
+                        local d = vector.length(to_target)
+                        if d > 0 then
                             to_target = vector.normalize(to_target)
                             local dot = facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z
                             if dot >= 0.707 then -- 90° cone (cos 45°)
-                                local d = vector.distance(pos, epos)
                                 if d < nearest_dist then nearest, nearest_dist = obj, d end
+                                end
                             end
                         end
                     end
                 end
             end
-        end
         if not nearest then return end
         local tpos = nearest:get_pos()
         -- beam particles (0.3s)
@@ -411,26 +411,26 @@ function bot_parsecommand(pos,item)
         local player = minetest.get_player_by_name(owner)
         if not player then return end
         local facing_dir = minetest.facedir_to_dir(minetest.get_node(pos).param2)
-        -- find nearest hostile in 15 blocks, within 90° cone
+        -- find nearest hostile in 20 blocks, within 90° cone
         local nearest, nearest_dist = nil, 999
-        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 15)) do
+        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 20)) do
             if obj and obj:get_luaentity() then
                 local ent = obj:get_luaentity()
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
                    and obj ~= player
-                   and (ent.type == "monster" or ent.hostile or ent._is_hostile or ent._attack) then
-                    local epos = obj:get_pos()
-                    if epos then
-                        local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
-                        local tlen = vector.length(to_target)
-                        if tlen > 0 then
-                            to_target = vector.normalize(to_target)
-                            local dot = facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z
-                            if dot >= 0.707 then
-                                local d = vector.distance(pos, epos)
-                                if d < nearest_dist then nearest, nearest_dist = obj, d end
-                            end
+                   and (ent.type == "monster" or ent.type == "animal" or ent.hostile
+                        or ent._is_hostile or ent._attack or ent.passive == false) then
+                        local epos = obj:get_pos()
+                        if epos then
+                            local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
+                            local d = vector.length(to_target)
+                            if d > 0 then
+                                to_target = vector.normalize(to_target)
+                                local dot = facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z
+                                if dot >= 0.707 then
+                                    if d < nearest_dist then nearest, nearest_dist = obj, d end
+                                end
                         end
                     end
                 end
@@ -495,7 +495,43 @@ function bot_parsecommand(pos,item)
                 end
             end
         end
-        -- no recent attack: sparks
+        -- no recent attack: find nearest hostile in 20 blocks instead
+        local owner = meta:get_string("owner")
+        local player = minetest.get_player_by_name(owner)
+        local nearest, nearest_dist = nil, 999
+        if player then
+            for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 20)) do
+                if obj and obj:get_luaentity() then
+                    local ent = obj:get_luaentity()
+                    if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
+                       and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
+                       and obj ~= player
+                       and (ent.type == "monster" or ent.type == "animal" or ent.hostile
+                            or ent._is_hostile or ent._attack or ent.passive == false) then
+                        local epos = obj:get_pos()
+                        if epos then
+                            local d = vector.distance(pos, epos)
+                            if d < nearest_dist then nearest, nearest_dist = obj, d end
+                        end
+                    end
+                end
+            end
+        end
+        if nearest then
+            local ep = nearest:get_pos()
+            if ep then
+                local dx = ep.x - pos.x; local dz = ep.z - pos.z
+                if math.abs(dx) > math.abs(dz) then
+                    if dx > 0 then bot_turn_clockwise(pos); bot_turn_clockwise(pos);
+                    else bot_turn_anticlockwise(pos); bot_turn_anticlockwise(pos); end
+                else
+                    if dz > 0 then bot_turn_clockwise(pos); bot_turn_clockwise(pos);
+                    else bot_turn_anticlockwise(pos); bot_turn_anticlockwise(pos); end
+                end
+                return
+            end
+        end
+        -- no target: sparks
         minetest.add_particlespawner({amount = 5, time = 0.3,
             minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
             maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},

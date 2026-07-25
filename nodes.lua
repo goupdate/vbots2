@@ -180,7 +180,7 @@ minetest.register_entity("vbots2:bot_body", {
         textures = {"blank.png"},
         hp_max = 20,
     },
-    type = "npc",
+    type = "animal",
     _attack = 1,
     hostile = true,
     on_activate = function(self, staticdata)
