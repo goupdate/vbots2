@@ -393,9 +393,9 @@ function bot_parsecommand(pos,item)
         for i = 0, math.floor(blen * 8) do
             local p = vector.add(pos, vector.multiply(bdir, i * 0.125))
             minetest.add_particle({pos = p, velocity = {x=0,y=0,z=0},
-                acceleration = {x=0,y=0,z=0}, expirationtime = 0.25,
-                size = 0.35 + math.random() * 0.15, collisiondetection = false,
-                texture = "vbots_laser_beam.png", glow = 14})
+                acceleration = {x=0,y=0,z=0}, expirationtime = 1.0,
+                size = 0.7 + math.random() * 0.3, collisiondetection = false,
+                texture = "vbots_laser_spark.png", glow = 14})
         end
         -- impact sparks
         for i = 1, 12 do
@@ -405,7 +405,7 @@ function bot_parsecommand(pos,item)
                 size = 0.2 + math.random()*0.15, collisiondetection = true,
                 texture = "vbots_laser_spark.png", glow = 10})
         end
-        nearest:punch(player, 0.5, {full_punch_interval = 0.5, damage_groups = {fleshy = 8}}, nil)
+        nearest:punch(player, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy = 8}}, nil)
     elseif item == "vbots2:shot" then
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)
