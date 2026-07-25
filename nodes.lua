@@ -248,10 +248,10 @@ minetest.register_entity("vbots2:projectile_snowball", {
         static_save = false,
     },
     _damage = 4,
+    _shooter = nil,
     on_activate = function(self, staticdata)
-        self.object:set_acceleration({x = 0, y = -22, z = 0})
+        self.object:set_acceleration({x = 0, y = 0, z = 0})
         self._timer = 0
-        self._shooter = nil
         if staticdata and staticdata ~= "" then
             local data = minetest.deserialize(staticdata)
             if data then
@@ -274,11 +274,11 @@ minetest.register_entity("vbots2:projectile_snowball", {
                 return
             end
         end
-        -- hit entity (use large radius for fast projectile)
-        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 1.5)) do
-            if obj ~= self.object and obj:get_luaentity() then
-                local ent = obj:get_luaentity()
-                if ent and ent.name ~= "__builtin:item" and ent.name ~= "vbots2:projectile_snowball" then
+-- hit entity (exclude own vbots2 entities that are at bot position)
+            for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 1.5)) do
+                if obj ~= self.object and obj:get_luaentity() then
+                    local ent = obj:get_luaentity()
+                    if ent and ent.name ~= "__builtin:item" and not ent.name:match("^vbots2:") then
                     local shooter = self._shooter
                     obj:punch(shooter, 0.5, {full_punch_interval = 0.5, damage_groups = {fleshy = self._damage}}, nil)
                     self.object:remove()

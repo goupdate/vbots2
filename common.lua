@@ -133,7 +133,7 @@ function bot_shoot(pos, meta, cfg)
         if vector.length(dir) == 0 then return end
         dir = vector.normalize(dir)
         local spawn_pos = {x = pos.x, y = pos.y + 0.6, z = pos.z}
-        local vel = {x = dir.x * 25, y = dir.y * 25 + 9, z = dir.z * 25}
+        local vel = {x = dir.x * 6.67, y = dir.y * 6.67, z = dir.z * 6.67}
         local obj = minetest.add_entity(spawn_pos, "vbots2:projectile_snowball")
         if obj then
             vbots2.log(meta:get_string("name"), P .. " SPAWNED vel=" .. string.format("%.0f,%.0f,%.0f", vel.x, vel.y, vel.z))
