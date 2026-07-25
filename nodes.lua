@@ -263,29 +263,26 @@ minetest.register_entity("vbots2:projectile_snowball", {
 on_step = function(self, dtime)
         self._timer = (self._timer or 0) + dtime
         if self._timer > 5 then
-            vbots2.log("proj", "TIMEOUT at " .. self._timer .. "s dmg=" .. tostring(self._damage))
+            minetest.log("action", "[vbots2] proj: TIMEOUT " .. tostring(self._timer) .. "s dmg=" .. tostring(self._damage))
             self.object:remove(); return
         end
         local pos = self.object:get_pos()
         if not pos then return end
         local node = minetest.get_node(pos)
-        -- hit solid block → vanish
         if node.name ~= "air" and node.name ~= "ignore" then
             local ndef = minetest.registered_nodes[node.name]
             if ndef and ndef.walkable then
-                vbots2.log("proj", "BLOCK " .. node.name .. " dmg=" .. tostring(self._damage))
+                minetest.log("action", "[vbots2] proj: BLOCK " .. node.name .. " pos=" .. minetest.pos_to_string(pos) .. " dmg=" .. tostring(self._damage))
                 self.object:remove()
                 return
             end
         end
-        -- hit entity (exclude own vbots2 entities that are at bot position)
         for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 1.5)) do
             if obj ~= self.object and obj:get_luaentity() then
                 local ent = obj:get_luaentity()
                 if ent and ent.name ~= "__builtin:item" and not ent.name:match("^vbots2:") then
-                    -- direct damage (avoid MCL punch crash with nil hitter)
                     local hp = obj:get_hp()
-                    vbots2.log("proj", "HIT " .. ent.name .. " hp=" .. tostring(hp) .. " dmg=" .. tostring(self._damage))
+                    minetest.log("action", "[vbots2] proj: HIT " .. ent.name .. " hp=" .. tostring(hp) .. " dmg=" .. tostring(self._damage) .. " pos=" .. minetest.pos_to_string(pos))
                     obj:set_hp(math.max(0, hp - self._damage))
                     self.object:remove()
                     return
