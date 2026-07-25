@@ -373,12 +373,12 @@ elseif item == "vbots2:turn_danger" then
                 end
             end
         end
-        -- no recent attack: find nearest hostile in 10 blocks
+        -- no recent attack: find nearest hostile in 30 blocks (shot range)
         local nearest, nearest_dist = nil, 999
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)
         if player then
-            for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 10)) do
+            for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 30)) do
                 if obj and obj:get_luaentity() then
                     local ent = obj:get_luaentity()
                     if is_valid_target(ent, obj, player) and is_hostile_entity(ent) then
