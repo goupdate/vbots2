@@ -131,5 +131,20 @@ function is_walkable(p)
     if g.water or g.lava or g.liquid then
         return false
     end
+end
+
+function is_hostile_entity(ent)
+    if not ent or not ent.name then return false end
+    -- check runtime entity fields first
+    if ent.type == "monster" or ent.hostile
+       or ent._is_hostile or ent._attack or ent.passive == false then
+        return true
+    end
+    -- fallback: check registered entity definition
+    local def = minetest.registered_entities[ent.name]
+    if def then
+        return (def.type == "monster" or def.type == "animal"
+            or def.hostile or def._attack or not def.passive)
+    end
     return false
 end

@@ -367,9 +367,8 @@ function bot_parsecommand(pos,item)
                 local ent = obj:get_luaentity()
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                   and obj ~= player
-                   and (ent.type == "monster" or ent.type == "animal" or ent.hostile
-                        or ent._is_hostile or ent._attack or ent.passive == false) then
+                    and obj ~= player
+                    and is_hostile_entity(ent) then
                     local epos = obj:get_pos()
                     if epos then
                         local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
@@ -419,8 +418,7 @@ function bot_parsecommand(pos,item)
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
                    and obj ~= player
-                   and (ent.type == "monster" or ent.type == "animal" or ent.hostile
-                        or ent._is_hostile or ent._attack or ent.passive == false) then
+                   and is_hostile_entity(ent) then
                         local epos = obj:get_pos()
                         if epos then
                             local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
