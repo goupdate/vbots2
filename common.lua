@@ -136,15 +136,14 @@ end
 function is_hostile_entity(ent)
     if not ent or not ent.name then return false end
     -- check runtime entity fields first
-    if ent.type == "monster" or ent.hostile
-       or ent._is_hostile or ent._attack or ent.passive == false then
+    if ent.hostile or ent._is_hostile or ent._attack or ent.passive == false then
         return true
     end
-    -- fallback: check registered entity definition
+    -- check entity definition (reliable for Mobs Redo/VoxeLibre)
     local def = minetest.registered_entities[ent.name]
     if def then
-        return (def.type == "monster" or def.type == "animal"
-            or def.hostile or def._attack or not def.passive)
+        if def.type == "monster" then return true end
+        if def.hostile or def._attack or def.passive == false then return true end
     end
     return false
 end

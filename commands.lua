@@ -342,10 +342,12 @@ function bot_parsecommand(pos,item)
             end -- for dy
         end -- if air
     elseif item == "vbots2:laser" then
+        vbots2.log(meta:get_string("name"), "LASER FIRING at " .. pos.x .. "," .. pos.y .. "," .. pos.z)
         local now = minetest.get_gametime()
         local last = meta:get_float("laser_last")
         if now - last < 2.0 then
             -- cooldown: show recharge sparks
+            vbots2.log(meta:get_string("name"), "LASER COOLDOWN")
             minetest.add_particlespawner({amount = 3, time = 0.2,
                 minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
                 maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
@@ -362,30 +364,39 @@ function bot_parsecommand(pos,item)
         local facing_dir = minetest.facedir_to_dir(minetest.get_node(pos).param2)
         -- find nearest hostile in 5 blocks, within 90° cone
         local nearest, nearest_dist = nil, 999
+        local total_nearby = 0
         for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
             if obj and obj:get_luaentity() then
                 local ent = obj:get_luaentity()
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                    and obj ~= player and not obj:get_player_name()
-                    and is_hostile_entity(ent) then
-                    local epos = obj:get_pos()
-                    if epos then
-                        local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
-                        local d = vector.length(to_target)
-                        if d > 0 then
-                            to_target = vector.normalize(to_target)
-                            local dot = -(facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z)
-                            if dot >= 0.707 then -- 90° cone (cos 45°)
-                                if d < nearest_dist then nearest, nearest_dist = obj, d end
+                    and obj ~= player and not obj:get_player_name() then
+                    total_nearby = total_nearby + 1
+                    local ish = is_hostile_entity(ent)
+                    if ish then
+                        local epos = obj:get_pos()
+                        if epos then
+                            local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
+                            local d = vector.length(to_target)
+                            if d > 0 then
+                                to_target = vector.normalize(to_target)
+                                local dot = -(facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z)
+                                if dot >= 0.707 then -- 90° cone (cos 45°)
+                                    if d < nearest_dist then nearest, nearest_dist = obj, d end
                                 end
                             end
                         end
+                    else
+                        vbots2.log(meta:get_string("name"), "LASER IGNORE " .. ent.name .. " not hostile")
                     end
                 end
             end
-        if not nearest then return end
+        end
+        if not nearest then
+            vbots2.log(meta:get_string("name"), "LASER NO TARGET nearby=" .. total_nearby)
+            return end
         local tpos = nearest:get_pos()
+        vbots2.log(meta:get_string("name"), "LASER target at " .. tpos.x .. "," .. tpos.y .. "," .. tpos.z .. " entity=" .. nearest:get_luaentity().name)
         -- beam particles (0.3s)
         local beam = vector.subtract(tpos, pos); local blen = vector.length(beam)
         local bdir = vector.normalize(beam)
@@ -404,7 +415,9 @@ function bot_parsecommand(pos,item)
                 size = 0.2 + math.random()*0.15, collisiondetection = true,
                 texture = "vbots_laser_spark.png", glow = 10})
         end
-        nearest:punch(player, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy = 8}}, nil)
+        vbots2.log(meta:get_string("name"), string.format("LASER HIT %s dmg=10", tostring(nearest:get_luaentity() and nearest:get_luaentity().name or "?")))
+        nearest:punch(player, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy = 10}}, nil)
+        meta:set_float("laser_last", now)
     elseif item == "vbots2:shot" then
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)
@@ -501,10 +514,12 @@ function bot_parsecommand(pos,item)
             for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 20)) do
                 if obj and obj:get_luaentity() then
                     local ent = obj:get_luaentity()
-                    if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
-                       and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
+                if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
+                   and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
+                   and ent.name ~= "vbots2:projectile_snowball"
+                   and not ent.name:find("^mcl_burning:") and not ent.name:find("^mcl_wieldview:")
                     and obj ~= player and not obj:get_player_name()
-                    and is_hostile_entity(ent) then
+                    and (ent.type == "monster" or ent.hostile or ent._is_hostile or ent._attack) then
                         local epos = obj:get_pos()
                         if epos then
                             local d = vector.distance(pos, epos)

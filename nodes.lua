@@ -243,7 +243,7 @@ minetest.register_entity("vbots2:projectile_snowball", {
         collisionbox = {-0.15, -0.15, -0.15, 0.15, 0.15, 0.15},
         visual = "sprite",
         visual_size = {x = 0.4, y = 0.4, z = 0.4},
-        textures = {"default_snowball.png"},
+        textures = {"blank.png^[colorize:#FFFFFF:128"},
         pointable = false,
         static_save = false,
     },
