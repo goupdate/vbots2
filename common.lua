@@ -42,6 +42,17 @@ function interact(player,pos,isempty)
     return false
 end
 
+function is_valid_target(ent, obj, player)
+    if not ent or not ent.name then return false end
+    if ent.name == "__builtin:item" then return false end
+    if ent.name:find("^vbots2:") then return false end
+    if ent.name:find("^mcl_burning:") then return false end
+    if ent.name:find("^mcl_wieldview:") then return false end
+    if obj == player then return false end
+    if obj:get_player_name() ~= "" then return false end
+    return true
+end
+
 
 -------------------------------------
 -- Clean up bot table and bot storage

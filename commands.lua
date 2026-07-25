@@ -379,12 +379,9 @@ function bot_parsecommand(pos,item)
             vbots2.log(meta:get_string("name"), "LASER ENTITY: " .. ename)
             if ent then
                 vbots2.log(meta:get_string("name"), "LASER CHECK name=" .. (ent.name or "nil") .. " isplayer=" .. tostring(obj:get_player_name() or "no"))
-                if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
-                   and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                    and obj ~= player and obj:get_player_name() == "" then
+                if is_valid_target(ent, obj, player) then
                     total_nearby = total_nearby + 1
-                    local ish = is_hostile_entity(ent)
-                    if ish then
+                    if is_hostile_entity(ent) then
                         local epos = obj:get_pos()
                         if epos then
                             local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
@@ -466,9 +463,8 @@ function bot_parsecommand(pos,item)
             if obj and obj:get_luaentity() then
                 local ent = obj:get_luaentity()
                 vbots2.log(meta:get_string("name"), "SHOT ENTITY: " .. (ent.name or "?"))
-                if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
-                   and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                    and obj ~= player and obj:get_player_name() == ""
+                if ent.name ~= "__builtin:item"
+                    and is_valid_target(ent, obj, player)
                     and is_hostile_entity(ent) then
                         local epos = obj:get_pos()
                         if epos then
@@ -552,12 +548,8 @@ function bot_parsecommand(pos,item)
             for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 20)) do
                 if obj and obj:get_luaentity() then
                     local ent = obj:get_luaentity()
-                if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
-                   and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                   and ent.name ~= "vbots2:projectile_snowball"
-                   and not ent.name:find("^mcl_burning:") and not ent.name:find("^mcl_wieldview:")
-                    and obj ~= player and obj:get_player_name() == ""
-                    and (ent.type == "monster" or ent.hostile or ent._is_hostile or ent._attack) then
+                if ent.name ~= "__builtin:item"
+                    and is_valid_target(ent, obj, player) then
                         local epos = obj:get_pos()
                         if epos then
                             local d = vector.distance(pos, epos)
