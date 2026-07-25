@@ -409,27 +409,10 @@ function bot_parsecommand(pos,item)
         -- beam particles (0.3s) toward center of target
         local beam = vector.subtract(aim_pos, pos); local blen = vector.length(beam)
         local bdir = vector.normalize(beam)
-        for i = 0, math.floor(blen * 8) do
-            local p = vector.add(pos, vector.multiply(bdir, i * 0.125))
-            minetest.add_particle({pos = p, velocity = {x=0,y=0,z=0},
-                acceleration = {x=0,y=0,z=0}, expirationtime = 1.0,
-                size = 0.7 + math.random() * 0.3, collisiondetection = false,
-                texture = "vbots_laser_spark.png", glow = 14})
-        end
-        -- impact sparks at center
-        for i = 1, 12 do
-            minetest.add_particle({pos = aim_pos,
-                velocity = {x=math.random()-0.5, y=math.random()*2+1, z=math.random()-0.5},
-                acceleration = {x=0, y=-6, z=0}, expirationtime = 0.5 + math.random(),
-                size = 0.2 + math.random()*0.15, collisiondetection = true,
-                texture = "vbots_laser_spark.png", glow = 10})
-        end
-        vbots2.log(meta:get_string("name"), string.format("LASER HIT %s aim=%.1f,%.1f,%.1f", tostring(nearest:get_luaentity() and nearest:get_luaentity().name or "?"), aim_pos.x, aim_pos.y, aim_pos.z))
-        -- line of sight: manual step-through (raycast API unreliable in 5.14)
-        local step_count = math.floor(blen) + 1
+        -- LOS check FIRST: step-through at 0.2 block intervals
         local blocked = false
-        for s = 1, step_count do
-            local ck = vector.add(pos, vector.multiply(bdir, s * 0.5))
+        for s = 1, math.floor(blen * 5) + 1 do
+            local ck = vector.add(pos, vector.multiply(bdir, s * 0.2))
             ck = {x = math.floor(ck.x + 0.5), y = math.floor(ck.y), z = math.floor(ck.z + 0.5)}
             local cn = minetest.get_node(ck).name
             if cn ~= "air" and cn ~= "ignore" then
@@ -438,15 +421,33 @@ function bot_parsecommand(pos,item)
             end
         end
         if blocked then
-            vbots2.log(meta:get_string("name"), "LASER BLOCKED by obstacle")
+            vbots2.log(meta:get_string("name"), "LASER BLOCKED by wall")
             meta:set_float("laser_last", now)
             return
+        end
+        -- beam particles (after LOS: only if clear shot)
+        for i = 0, math.floor(blen * 8) do
+            local p = vector.add(pos, vector.multiply(bdir, i * 0.125))
+            minetest.add_particle({pos = p, velocity = {x=0,y=0,z=0},
+                acceleration = {x=0,y=0,z=0}, expirationtime = 1.0,
+                size = 0.7 + math.random() * 0.3, collisiondetection = false,
+                texture = "vbots_laser_spark.png", glow = 14})
+        end
+        -- impact sparks
+        for i = 1, 12 do
+            minetest.add_particle({pos = aim_pos,
+                velocity = {x=math.random()-0.5, y=math.random()*2+1, z=math.random()-0.5},
+                acceleration = {x=0, y=-6, z=0}, expirationtime = 0.5 + math.random(),
+                size = 0.2 + math.random()*0.15, collisiondetection = true,
+                texture = "vbots_laser_spark.png", glow = 10})
         end
         -- direct damage (skip MCL punch system which crashes on nil hitter)
         local ent = nearest:get_luaentity()
         if ent and ent.object then
-            local hp = ent.object:get_hp() - 10
-            ent.object:set_hp(math.max(0, hp))
+            local hp_before = ent.object:get_hp()
+            local hp_after = math.max(0, hp_before - 10)
+            ent.object:set_hp(hp_after)
+            vbots2.log(meta:get_string("name"), string.format("LASER DMG %s aim=%.1f,%.1f,%.1f hp:%d→%d", tostring(ent.name), aim_pos.x, aim_pos.y, aim_pos.z, hp_before, hp_after))
         end
         meta:set_float("laser_last", now)
     elseif item == "vbots2:shot" then
@@ -483,6 +484,7 @@ function bot_parsecommand(pos,item)
         end
         if not nearest then
             -- no target: sparks from bot
+            vbots2.log(meta:get_string("name"), "SHOT NO TARGET in cone")
             minetest.add_particlespawner({amount = 5, time = 0.3,
                 minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
                 maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
