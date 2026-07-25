@@ -344,7 +344,7 @@ function bot_parsecommand(pos,item)
     elseif item == "vbots2:laser" then
         bot_shoot(pos, meta, {radius=10, damage=10, cooldown_key="laser_last", cooldown_time=4, log_prefix="LASER", is_shot=false})
     elseif item == "vbots2:shot" then
-        bot_shoot(pos, meta, {radius=20, damage=40, cooldown_key="shot_last", cooldown_time=6, log_prefix="SHOT", is_shot=true})
+        bot_shoot(pos, meta, {radius=30, damage=40, cooldown_key="shot_last", cooldown_time=6, log_prefix="SHOT", is_shot=true})
     elseif item == "vbots2:damaged_check" then
         local now = minetest.get_gametime()
         local dt = meta:get_float("damage_time")

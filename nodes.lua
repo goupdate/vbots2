@@ -278,11 +278,12 @@ minetest.register_entity("vbots2:projectile_snowball", {
             for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 1.5)) do
                 if obj ~= self.object and obj:get_luaentity() then
                     local ent = obj:get_luaentity()
-                    if ent and ent.name ~= "__builtin:item" and not ent.name:match("^vbots2:") then
-                    local shooter = self._shooter
-                    obj:punch(shooter, 0.5, {full_punch_interval = 0.5, damage_groups = {fleshy = self._damage}}, nil)
-                    self.object:remove()
-                    return
+if ent and ent.name ~= "__builtin:item" and not ent.name:match("^vbots2:") then
+                        -- direct damage (avoid MCL punch crash with nil hitter)
+                        local hp = obj:get_hp() - self._damage
+                        obj:set_hp(math.max(0, hp))
+                        self.object:remove()
+                        return
                 end
             end
         end

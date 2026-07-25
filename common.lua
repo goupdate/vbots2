@@ -129,7 +129,7 @@ function bot_shoot(pos, meta, cfg)
     end
     if cfg.is_shot then
         -- SHOT: spawn projectile
-        local dir = vector.subtract(tpos, pos)
+        local dir = vector.subtract(aim_pos, pos)
         if vector.length(dir) == 0 then return end
         dir = vector.normalize(dir)
         local spawn_pos = {x = pos.x, y = pos.y + 0.6, z = pos.z}
