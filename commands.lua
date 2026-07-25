@@ -353,7 +353,7 @@ function bot_parsecommand(pos,item)
         else
             meta:set_int("skip", 2)
         end
-    elseif item == "vbots2:turn_danger" then
+elseif item == "vbots2:turn_danger" then
         local now = minetest.get_gametime()
         local dt = meta:get_float("damage_time")
         if dt > 0 and now - dt < 3.0 then
@@ -373,40 +373,7 @@ function bot_parsecommand(pos,item)
                 end
             end
         end
-        -- no recent attack: find nearest hostile in 20 blocks instead
-        local owner = meta:get_string("owner")
-        local player = minetest.get_player_by_name(owner)
-        local nearest, nearest_dist = nil, 999
-        if player then
-            for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 20)) do
-                if obj and obj:get_luaentity() then
-                    local ent = obj:get_luaentity()
-                if ent.name ~= "__builtin:item"
-                    and is_valid_target(ent, obj, player) then
-                        local epos = obj:get_pos()
-                        if epos then
-                            local d = vector.distance(pos, epos)
-                            if d < nearest_dist then nearest, nearest_dist = obj, d end
-                        end
-                    end
-                end
-            end
-        end
-        if nearest then
-            local ep = nearest:get_pos()
-            if ep then
-                local dx = ep.x - pos.x; local dz = ep.z - pos.z
-                if math.abs(dx) > math.abs(dz) then
-                    if dx > 0 then bot_turn_clockwise(pos); bot_turn_clockwise(pos);
-                    else bot_turn_anticlockwise(pos); bot_turn_anticlockwise(pos); end
-                else
-                    if dz > 0 then bot_turn_clockwise(pos); bot_turn_clockwise(pos);
-                    else bot_turn_anticlockwise(pos); bot_turn_anticlockwise(pos); end
-                end
-                return
-            end
-        end
-        -- no target: sparks
+        -- no target: sparks only, don"t turn
         minetest.add_particlespawner({amount = 5, time = 0.3,
             minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
             maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
