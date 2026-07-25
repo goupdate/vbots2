@@ -442,7 +442,12 @@ function bot_parsecommand(pos,item)
         if blocked then
             vbots2.log(meta:get_string("name"), "LASER BLOCKED by " .. (pt and pt.under and pt.under.name or "?"))
             return end -- if blocked
-        nearest:punch(nil, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy = 20}}, nil)
+        -- direct damage (skip MCL punch system which crashes on nil hitter)
+        local ent = nearest:get_luaentity()
+        if ent and ent.object then
+            local hp = ent.object:get_hp() - 20
+            ent.object:set_hp(math.max(1, hp))
+        end
         meta:set_float("laser_last", now)
     elseif item == "vbots2:shot" then
         local owner = meta:get_string("owner")
