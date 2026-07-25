@@ -367,7 +367,7 @@ function bot_parsecommand(pos,item)
                 local ent = obj:get_luaentity()
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                    and obj ~= player
+                    and obj ~= player and not obj:get_player_name()
                     and is_hostile_entity(ent) then
                     local epos = obj:get_pos()
                     if epos then
@@ -375,7 +375,7 @@ function bot_parsecommand(pos,item)
                         local d = vector.length(to_target)
                         if d > 0 then
                             to_target = vector.normalize(to_target)
-                            local dot = facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z
+                            local dot = -(facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z)
                             if dot >= 0.707 then -- 90° cone (cos 45°)
                                 if d < nearest_dist then nearest, nearest_dist = obj, d end
                                 end
@@ -417,15 +417,14 @@ function bot_parsecommand(pos,item)
                 local ent = obj:get_luaentity()
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                   and obj ~= player
-                   and is_hostile_entity(ent) then
+                    and obj ~= player and not obj:get_player_name()
+                    and is_hostile_entity(ent) then
                         local epos = obj:get_pos()
                         if epos then
                             local to_target = {x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z}
                             local d = vector.length(to_target)
                             if d > 0 then
                                 to_target = vector.normalize(to_target)
-                                -- front_dir = -facing_dir (bot faces opposite of facedir)
                                 local fdot = -(facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z)
                                 if fdot >= 0.707 then
                                     if d < nearest_dist then nearest, nearest_dist = obj, d end
@@ -504,9 +503,8 @@ function bot_parsecommand(pos,item)
                     local ent = obj:get_luaentity()
                     if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                        and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                       and obj ~= player
-                       and (ent.type == "monster" or ent.type == "animal" or ent.hostile
-                            or ent._is_hostile or ent._attack or ent.passive == false) then
+                    and obj ~= player and not obj:get_player_name()
+                    and is_hostile_entity(ent) then
                         local epos = obj:get_pos()
                         if epos then
                             local d = vector.distance(pos, epos)
