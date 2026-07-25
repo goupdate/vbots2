@@ -365,7 +365,19 @@ function bot_parsecommand(pos,item)
         -- find nearest hostile in 5 blocks, within 90° cone
         local nearest, nearest_dist = nil, 999
         local total_nearby = 0
-        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 5)) do
+        local all_ents = minetest.get_objects_inside_radius(pos, 10)
+        vbots2.log(meta:get_string("name"), "LASER SCAN radius=10 found=" .. #all_ents)
+        for _, obj in ipairs(all_ents) do
+            local ename = "?"
+            local ent = nil
+            if obj and obj:get_luaentity() then
+                ent = obj:get_luaentity()
+                ename = ent.name or "?"
+            elseif obj and obj:get_player_name() then
+                ename = "player:" .. obj:get_player_name()
+            end
+            vbots2.log(meta:get_string("name"), "LASER ENTITY: " .. ename)
+            if ent then
             if obj and obj:get_luaentity() then
                 local ent = obj:get_luaentity()
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
