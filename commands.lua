@@ -428,25 +428,11 @@ function bot_parsecommand(pos,item)
                 texture = "vbots_laser_spark.png", glow = 10})
         end
         vbots2.log(meta:get_string("name"), string.format("LASER HIT %s aim=%.1f,%.1f,%.1f", tostring(nearest:get_luaentity() and nearest:get_luaentity().name or "?"), aim_pos.x, aim_pos.y, aim_pos.z))
-        -- line of sight: raycast from bot to target center, skip if solid block in way
-        local los = minetest.raycast({x=pos.x, y=pos.y+0.6, z=pos.z}, aim_pos, false, false)
-        local blocked = false
-        for pt in los do
-            if pt and pt.type == "node" then
-                local ndef = minetest.registered_nodes[pt.under.name]
-                if ndef and ndef.walkable and pt.under.name ~= "ignore" then
-                    blocked = true; break
-                end -- if walkable
-            end -- if node
-        end -- for pt
-        if blocked then
-            vbots2.log(meta:get_string("name"), "LASER BLOCKED by " .. (pt and pt.under and pt.under.name or "?"))
-            return end -- if blocked
         -- direct damage (skip MCL punch system which crashes on nil hitter)
         local ent = nearest:get_luaentity()
         if ent and ent.object then
-            local hp = ent.object:get_hp() - 20
-            ent.object:set_hp(math.max(1, hp))
+            local hp = ent.object:get_hp() - 10
+            ent.object:set_hp(math.max(0, hp))
         end
         meta:set_float("laser_last", now)
     elseif item == "vbots2:shot" then
