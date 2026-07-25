@@ -406,8 +406,9 @@ function bot_parsecommand(pos,item)
         local tpos = nearest:get_pos()
         local aim_pos = {x = tpos.x, y = (tpos.y or 0) + 1, z = tpos.z}
         vbots2.log(meta:get_string("name"), "LASER target at " .. aim_pos.x .. "," .. aim_pos.y .. "," .. aim_pos.z .. " entity=" .. nearest:get_luaentity().name)
-        -- beam particles (0.3s) toward center of target
-        local beam = vector.subtract(aim_pos, pos); local blen = vector.length(beam)
+        -- beam particles toward center of target (from bot eye level)
+        local eye = {x = pos.x, y = pos.y + 0.6, z = pos.z}
+        local beam = vector.subtract(aim_pos, eye); local blen = vector.length(beam)
         local bdir = vector.normalize(beam)
         -- LOS check FIRST: step-through at 0.2 block intervals
         -- beam particles
@@ -418,14 +419,15 @@ function bot_parsecommand(pos,item)
                 size = 0.7 + math.random() * 0.3, collisiondetection = false,
                 texture = "vbots_laser_spark.png", glow = 14})
         end
-        -- LOS check: block laser through walls (but pass through plants/grass/air)
-        local beam_vec = vector.subtract(aim_pos, pos)
+        -- LOS check: block laser through walls (pass through plants/grass/air)
+        local eye = {x = pos.x, y = pos.y + 0.6, z = pos.z}
+        local beam_vec = vector.subtract(aim_pos, eye)
         local beam_len = vector.length(beam_vec)
         local blocked = false
         if beam_len > 0 then
             local beam_dir = vector.normalize(beam_vec)
-            for s = 0, math.floor(beam_len * 2) do
-                local p = vector.add(pos, vector.multiply(beam_dir, s * 0.5))
+            for s = 1, math.floor(beam_len * 2) do
+                local p = vector.add(eye, vector.multiply(beam_dir, s * 0.5))
                 local pnode = minetest.get_node({x=math.floor(p.x+0.5), y=math.floor(p.y+0.5), z=math.floor(p.z+0.5)})
                 local pndef = minetest.registered_nodes[pnode.name]
                 if pndef and pndef.walkable then
