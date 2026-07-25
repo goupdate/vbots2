@@ -406,20 +406,7 @@ function bot_parsecommand(pos,item)
         local tpos = nearest:get_pos()
         local aim_pos = {x = tpos.x, y = (tpos.y or 0) + 1, z = tpos.z}
         vbots2.log(meta:get_string("name"), "LASER target at " .. aim_pos.x .. "," .. aim_pos.y .. "," .. aim_pos.z .. " entity=" .. nearest:get_luaentity().name)
-        -- beam particles toward center of target (from bot eye level)
-        local eye = {x = pos.x, y = pos.y + 0.6, z = pos.z}
-        local beam = vector.subtract(aim_pos, eye); local blen = vector.length(beam)
-        local bdir = vector.normalize(beam)
-        -- LOS check FIRST: step-through at 0.2 block intervals
-        -- beam particles
-        for i = 0, math.floor(blen * 8) do
-            local p = vector.add(pos, vector.multiply(bdir, i * 0.125))
-            minetest.add_particle({pos = p, velocity = {x=0,y=0,z=0},
-                acceleration = {x=0,y=0,z=0}, expirationtime = 1.0,
-                size = 0.7 + math.random() * 0.3, collisiondetection = false,
-                texture = "vbots_laser_spark.png", glow = 14})
-        end
-        -- LOS check: block laser through walls (pass through plants/grass/air)
+        -- LOS check FIRST: block laser through walls (pass through plants/grass/air)
         local eye = {x = pos.x, y = pos.y + 0.6, z = pos.z}
         local beam_vec = vector.subtract(aim_pos, eye)
         local beam_len = vector.length(beam_vec)
@@ -440,16 +427,25 @@ function bot_parsecommand(pos,item)
             end
         end
         if blocked then
-            vbots2.log(meta:get_string("name"), "LASER BLOCKED")
-            -- wall sparks
-            minetest.add_particlespawner({amount = 5, time = 0.3,
-                minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
-                maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
-                minvel = {x = -0.5, y = 1, z = -0.5}, maxvel = {x = 0.5, y = 3, z = 0.5},
-                minacc = {x = 0, y = -2, z = 0}, maxacc = {x = 0, y = -5, z = 0},
-                minexptime = 0.3, maxexptime = 0.6, minsize = 0.5, maxsize = 1,
-                collisiondetection = false, texture = "vbots_laser_spark.png", glow = 14})
+            vbots2.log(meta:get_string("name"), "LASER BLOCKED by wall")
+            -- wall sparks at impact point
+            local bp = vector.add(eye, vector.multiply(beam_vec, 0.5)) -- approximate hit point
+            for i = 1, 6 do
+                minetest.add_particle({pos = bp,
+                    velocity = {x=math.random()-0.5, y=math.random()*2+1, z=math.random()-0.5},
+                    acceleration = {x=0, y=-6, z=0}, expirationtime = 0.5 + math.random(),
+                    size = 0.2 + math.random()*0.15, collisiondetection = true,
+                    texture = "vbots_laser_spark.png", glow = 10})
+            end
             return
+        end
+        -- beam particles (visible)
+        for i = 0, math.floor(beam_len * 8) do
+            local p = vector.add(pos, vector.multiply(beam_dir, i * 0.125))
+            minetest.add_particle({pos = p, velocity = {x=0,y=0,z=0},
+                acceleration = {x=0,y=0,z=0}, expirationtime = 1.0,
+                size = 0.7 + math.random() * 0.3, collisiondetection = false,
+                texture = "vbots_laser_spark.png", glow = 14})
         end
         -- impact sparks
         for i = 1, 12 do
@@ -494,7 +490,10 @@ function bot_parsecommand(pos,item)
                                 local fdot = -(facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z)
                                 vbots2.log(meta:get_string("name"), "SHOT CANDIDATE " .. (ent.name or "?") .. " dist=" .. math.floor(d) .. " fdot=" .. string.format("%.2f", fdot))
                                 if fdot >= 0.707 then -- 90° cone (cos 45°)
-                                    if d < nearest_dist then nearest, nearest_dist = obj, d end
+                                    if d < nearest_dist then
+                                        nearest, nearest_dist = obj, d
+                                        vbots2.log(meta:get_string("name"), "SHOT LOCKED dist=" .. math.floor(d))
+                                    end
                                 end
                         end
                     end
