@@ -425,8 +425,9 @@ function bot_parsecommand(pos,item)
                             local d = vector.length(to_target)
                             if d > 0 then
                                 to_target = vector.normalize(to_target)
-                                local dot = facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z
-                                if dot >= 0.707 then
+                                -- front_dir = -facing_dir (bot faces opposite of facedir)
+                                local fdot = -(facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z)
+                                if fdot >= 0.707 then
                                     if d < nearest_dist then nearest, nearest_dist = obj, d end
                                 end
                         end
@@ -455,7 +456,7 @@ function bot_parsecommand(pos,item)
         local spawn_pos = {x = pos.x, y = pos.y + 0.6, z = pos.z}
         -- parabolic: 1 block drop per 10 blocks forward at speed=25, gravity~-22
         local speed = 25
-        local vel = {x = dir.x * speed, y = dir.y * speed + (speed * 0.05), z = dir.z * speed}
+        local vel = {x = dir.x * speed, y = dir.y * speed + 9, z = dir.z * speed}
         local obj = minetest.add_entity(spawn_pos, "vbots2:projectile_snowball")
         if obj then
             obj:set_velocity(vel)

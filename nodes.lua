@@ -221,21 +221,19 @@ minetest.register_entity("vbots2:bot_body", {
 })
 
 -- Make MCL/VL mobs target bot_body as a valid attack target
-if minetest.get_modpath("mcl_mobs") or minetest.get_modpath("vl_mobs") then
-    minetest.after(0, function()
-        for name, def in pairs(minetest.registered_entities) do
-            if def.specific_attack and type(def.specific_attack) == "table" then
-                local has_vbots = false
-                for _, t in ipairs(def.specific_attack) do
-                    if t == "vbots2:bot_body" then has_vbots = true; break end
-                end
-                if not has_vbots then
-                    table.insert(def.specific_attack, "vbots2:bot_body")
-                end
+minetest.after(1, function()
+    for name, def in pairs(minetest.registered_entities) do
+        if def.specific_attack and type(def.specific_attack) == "table" then
+            local has_vbots = false
+            for _, t in ipairs(def.specific_attack) do
+                if t == "vbots2:bot_body" then has_vbots = true; break end
+            end
+            if not has_vbots then
+                table.insert(def.specific_attack, "vbots2:bot_body")
             end
         end
-    end)
-end -- if mcl_mobs
+    end
+end)
 
 -- Bot projectile (snowball with gravity, damage on hit)
 minetest.register_entity("vbots2:projectile_snowball", {
@@ -276,8 +274,8 @@ minetest.register_entity("vbots2:projectile_snowball", {
                 return
             end
         end
-        -- hit entity
-        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 0.8)) do
+        -- hit entity (use large radius for fast projectile)
+        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 1.5)) do
             if obj ~= self.object and obj:get_luaentity() then
                 local ent = obj:get_luaentity()
                 if ent and ent.name ~= "__builtin:item" and ent.name ~= "vbots2:projectile_snowball" then
