@@ -224,14 +224,16 @@ Place a number **after** a command to repeat it (N−1) additional times. Works 
 
 | Icon | Command | Description |
 |------|---------|-------------|
-| ![laser](textures/vbots_laser.png) | **Laser** | Fire at nearest hostile (5 blocks, 90° cone), 2s cooldown with recharge sparks |
-| ![shot](textures/vbots_shot.png) | **Shot** | Throw dark snowball at nearest hostile (15 blocks, 90° cone), 3× stone sword damage, sparks if no target |
+| ![laser](textures/vbots_laser.png) | **Laser** | Fire at nearest hostile (5 blocks, 90° cone, damage=20, 2s cooldown). 2-shot zombie kill. |
+| ![shot](textures/vbots_shot.png) | **Shot** | Throw snowball at nearest hostile (20 blocks, 90° cone, damage=40, 8s cooldown). 1-shot zombie kill. |
 | ![bug_check](textures/vbots_bug_check.png) | **Bug?** | Skip next command if hostile mob within 5 blocks |
 | ![damaged_check](textures/vbots_damaged_check.png) | **Damaged?** | Skip next command if bot was attacked in last 3 seconds |
-| ![turn_danger](textures/vbots_turn_danger.png) | **Turn→** | Turn toward attacker direction (last 3s), sparks if no recent attack |
+| ![turn_danger](textures/vbots_turn_danger.png) | **Turn→** | Turn toward attacker direction (last 3s). Falls back to nearest hostile in 20 blocks. |
 
 **Laser & Shot** fire only within a 90° cone in the bot's facing direction.
-**[Damaged?]** and **[Turn→]** track damage via the bot's combat entity — works with any mob attack.
+**[Damaged?]** and **[Turn→]** track damage via the bot's combat entity (`vbots2:bot_body`) — works with any mob attack.
+Bot uses `is_hostile_entity()`: checks `type=="monster"`, `hostile`, `_attack`, `passive==false` flags on runtime entity + registered definition fallback.
+Zombie HP = 20. Bot body HP = 20. Mobs target bot body via `specific_attack` table injection at mod load.
 
 ---
 

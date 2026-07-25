@@ -66,3 +66,53 @@ Run `.\luac\luac54.exe -p` after every change.
 - After each logical unit of work (bug fix, feature, README update), run `compress` to collapse the finished section
 - Keeps context window lean for the next task
 - One compress per logical group of changes
+
+## Nuances & Debugging
+
+### Lua truthiness traps
+
+- `""` (empty string) is **truthy** in Lua. `not ""` = `false`.
+- `0` is **truthy** in Lua. `not 0` = `false`.
+- Only `nil` and `false` are falsy.
+- **Never** use `not obj:get_player_name()` to check "is not a player" — use `obj:get_player_name() == ""` instead.
+
+### Bot facedir direction
+
+- `minetest.facedir_to_dir(param2)` returns a vector that points OPPOSITE to the bot's actual front.
+- `get_front_node(pos)` calculates `pos - dir` (where dir = facedir_to_dir).
+- **Cone checks**: use `-(facing_dir·to_target)` not `facing_dir·to_target`.
+- For param2=0: facing_dir={0,0,1} (+Z), but bot's visual front is at -Z.
+
+### VoxeLibre/MCL mob targeting
+
+- Mobs use `specific_attack` table on entity **definition** (not instance) to choose attack targets.
+- `vbots2:bot_body` is registered as vanilla entity (`minetest.register_entity`), not via Mobs Redo API.
+- Must add `"vbots2:bot_body"` to every mob's `def.specific_attack` table.
+- Use `minetest.after(1, ...)` delay — mobs may be registered after vbots2.
+- **Do NOT** guard with `minetest.get_modpath("vl_mobs")` — VoxeLibre uses `mcl_mobs` internally.
+
+### Combat system
+
+| Command | Damage (fleshy) | Range | Cooldown | Effect |
+|---------|----------------|-------|----------|--------|
+| Laser | 20 | 5 blocks, 90° cone | 2s | Instant beam, particles |
+| Shot | 40 | 20 blocks, 90° cone | 8s | Snowball projectile (gravity=-22, speed=25, y-comp=+9) |
+| bug_check | — | 5 blocks | — | skip=1 if hostile found |
+| damaged_check | — | — | — | skip=1 if attacked in last 3s |
+| turn_danger | — | 20 blocks | — | turn toward attacker or nearest hostile |
+
+- Zombie HP = 20. Laser = 2-shot kill, Shot = 1-shot kill.
+- `is_hostile_entity(ent)`: checks `ent.type == "monster"` OR `ent.hostile` OR `ent._is_hostile` OR `ent._attack` OR `ent.passive == false`, then falls back to definition check.
+- **Do NOT** include `ent.type == "animal"` — animals are passive.
+
+### File split notes
+
+- All cross-file functions must be global (no `local`): `facebot`, `facedirs`, `move_bot`, `bot_parsecommand`, etc.
+- Cross-file tables/variables also need global: `facedirs`, `vbots2.bot_info`, etc.
+- Load order in init.lua: common→movement→dig_build→pathfinding→commands→timer→nodes→register_commands.
+- `luac -p` only catches syntax errors — test in-game for runtime errors.
+
+### Luanti 5.14.0 — bundled tools
+
+- `luac\luac54.exe` — Lua compiler syntax check.
+- Use `.\luac\luac54.exe -p <file>` before every commit.

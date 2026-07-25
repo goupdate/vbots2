@@ -378,11 +378,10 @@ function bot_parsecommand(pos,item)
             end
             vbots2.log(meta:get_string("name"), "LASER ENTITY: " .. ename)
             if ent then
-            if obj and obj:get_luaentity() then
-                local ent = obj:get_luaentity()
+                vbots2.log(meta:get_string("name"), "LASER CHECK name=" .. (ent.name or "nil") .. " isplayer=" .. tostring(obj:get_player_name() or "no"))
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                    and obj ~= player and not obj:get_player_name() then
+                    and obj ~= player and obj:get_player_name() == "" then
                     total_nearby = total_nearby + 1
                     local ish = is_hostile_entity(ent)
                     if ish then
@@ -408,9 +407,10 @@ function bot_parsecommand(pos,item)
             vbots2.log(meta:get_string("name"), "LASER NO TARGET nearby=" .. total_nearby)
             return end
         local tpos = nearest:get_pos()
-        vbots2.log(meta:get_string("name"), "LASER target at " .. tpos.x .. "," .. tpos.y .. "," .. tpos.z .. " entity=" .. nearest:get_luaentity().name)
-        -- beam particles (0.3s)
-        local beam = vector.subtract(tpos, pos); local blen = vector.length(beam)
+        local aim_pos = {x = tpos.x, y = (tpos.y or 0) + 1, z = tpos.z}
+        vbots2.log(meta:get_string("name"), "LASER target at " .. aim_pos.x .. "," .. aim_pos.y .. "," .. aim_pos.z .. " entity=" .. nearest:get_luaentity().name)
+        -- beam particles (0.3s) toward center of target
+        local beam = vector.subtract(aim_pos, pos); local blen = vector.length(beam)
         local bdir = vector.normalize(beam)
         for i = 0, math.floor(blen * 8) do
             local p = vector.add(pos, vector.multiply(bdir, i * 0.125))
@@ -419,16 +419,30 @@ function bot_parsecommand(pos,item)
                 size = 0.7 + math.random() * 0.3, collisiondetection = false,
                 texture = "vbots_laser_spark.png", glow = 14})
         end
-        -- impact sparks
+        -- impact sparks at center
         for i = 1, 12 do
-            minetest.add_particle({pos = tpos,
+            minetest.add_particle({pos = aim_pos,
                 velocity = {x=math.random()-0.5, y=math.random()*2+1, z=math.random()-0.5},
                 acceleration = {x=0, y=-6, z=0}, expirationtime = 0.5 + math.random(),
                 size = 0.2 + math.random()*0.15, collisiondetection = true,
                 texture = "vbots_laser_spark.png", glow = 10})
         end
-        vbots2.log(meta:get_string("name"), string.format("LASER HIT %s dmg=10", tostring(nearest:get_luaentity() and nearest:get_luaentity().name or "?")))
-        nearest:punch(player, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy = 10}}, nil)
+        vbots2.log(meta:get_string("name"), string.format("LASER HIT %s aim=%.1f,%.1f,%.1f", tostring(nearest:get_luaentity() and nearest:get_luaentity().name or "?"), aim_pos.x, aim_pos.y, aim_pos.z))
+        -- line of sight: raycast from bot to target center, skip if solid block in way
+        local los = minetest.raycast({x=pos.x, y=pos.y+0.6, z=pos.z}, aim_pos, false, false)
+        local blocked = false
+        for pt in los do
+            if pt and pt.type == "node" then
+                local ndef = minetest.registered_nodes[pt.under.name]
+                if ndef and ndef.walkable and pt.under.name ~= "ignore" then
+                    blocked = true; break
+                end -- if walkable
+            end -- if node
+        end -- for pt
+        if blocked then
+            vbots2.log(meta:get_string("name"), "LASER BLOCKED by " .. (pt and pt.under and pt.under.name or "?"))
+            return end -- if blocked
+        nearest:punch(nil, 1.0, {full_punch_interval = 1.0, damage_groups = {fleshy = 20}}, nil)
         meta:set_float("laser_last", now)
     elseif item == "vbots2:shot" then
         local owner = meta:get_string("owner")
@@ -442,7 +456,7 @@ function bot_parsecommand(pos,item)
                 local ent = obj:get_luaentity()
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
-                    and obj ~= player and not obj:get_player_name()
+                    and obj ~= player and obj:get_player_name() == ""
                     and is_hostile_entity(ent) then
                         local epos = obj:get_pos()
                         if epos then
@@ -530,7 +544,7 @@ function bot_parsecommand(pos,item)
                    and ent.name ~= "vbots2:bot_body" and ent.name ~= "vbots2:health_bar"
                    and ent.name ~= "vbots2:projectile_snowball"
                    and not ent.name:find("^mcl_burning:") and not ent.name:find("^mcl_wieldview:")
-                    and obj ~= player and not obj:get_player_name()
+                    and obj ~= player and obj:get_player_name() == ""
                     and (ent.type == "monster" or ent.hostile or ent._is_hostile or ent._attack) then
                         local epos = obj:get_pos()
                         if epos then

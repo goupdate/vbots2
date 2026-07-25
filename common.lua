@@ -136,7 +136,7 @@ end
 function is_hostile_entity(ent)
     if not ent or not ent.name then return false end
     -- check runtime entity fields first
-    if ent.hostile or ent._is_hostile or ent._attack or ent.passive == false then
+    if ent.type == "monster" or ent.hostile or ent._is_hostile or ent._attack or ent.passive == false then
         return true
     end
     -- check entity definition (reliable for Mobs Redo/VoxeLibre)
@@ -145,5 +145,6 @@ function is_hostile_entity(ent)
         if def.type == "monster" then return true end
         if def.hostile or def._attack or def.passive == false then return true end
     end
+    vbots2.log("HOSTILE", "false for " .. tostring(ent.name) .. " type=" .. tostring(ent.type) .. " hostile=" .. tostring(ent.hostile) .. " def=" .. tostring(def ~= nil) .. " def.type=" .. tostring(def and def.type))
     return false
 end
