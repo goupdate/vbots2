@@ -418,6 +418,37 @@ function bot_parsecommand(pos,item)
                 size = 0.7 + math.random() * 0.3, collisiondetection = false,
                 texture = "vbots_laser_spark.png", glow = 14})
         end
+        -- LOS check: block laser through walls (but pass through plants/grass/air)
+        local beam_vec = vector.subtract(aim_pos, pos)
+        local beam_len = vector.length(beam_vec)
+        local blocked = false
+        if beam_len > 0 then
+            local beam_dir = vector.normalize(beam_vec)
+            for s = 0, math.floor(beam_len * 2) do
+                local p = vector.add(pos, vector.multiply(beam_dir, s * 0.5))
+                local pnode = minetest.get_node({x=math.floor(p.x+0.5), y=math.floor(p.y+0.5), z=math.floor(p.z+0.5)})
+                local pndef = minetest.registered_nodes[pnode.name]
+                if pndef and pndef.walkable then
+                    local g = pndef.groups or {}
+                    if not g.flora and not g.grass and not g.plant and not g.flower and not g.torch and not g.attached_node and not g.leaves then
+                        blocked = true
+                        break
+                    end
+                end
+            end
+        end
+        if blocked then
+            vbots2.log(meta:get_string("name"), "LASER BLOCKED")
+            -- wall sparks
+            minetest.add_particlespawner({amount = 5, time = 0.3,
+                minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
+                maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
+                minvel = {x = -0.5, y = 1, z = -0.5}, maxvel = {x = 0.5, y = 3, z = 0.5},
+                minacc = {x = 0, y = -2, z = 0}, maxacc = {x = 0, y = -5, z = 0},
+                minexptime = 0.3, maxexptime = 0.6, minsize = 0.5, maxsize = 1,
+                collisiondetection = false, texture = "vbots_laser_spark.png", glow = 14})
+            return
+        end
         -- impact sparks
         for i = 1, 12 do
             minetest.add_particle({pos = aim_pos,
