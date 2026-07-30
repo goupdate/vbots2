@@ -145,6 +145,9 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                                 nametable[1]=="gte" or
                                 nametable[1]=="lte" or
                                 nametable[1]=="neq" or
+                                nametable[1]=="eq" or
+                                nametable[1]=="damaged" or
+                                nametable[1]=="goto" or
                                 nametable[1]=="dig" or
                                 nametable[1]=="end" or
                                 nametable[1]=="var" or
