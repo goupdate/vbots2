@@ -163,7 +163,7 @@ function bot_build(pos, buildy, filter, mode)
 
     -- no chest ahead: normal build ahead (front)
     local buildpos
-    if mode == "behind" then
+    if mode then  -- build_behind: place behind the bot
         buildpos = {x = pos.x + dir.x, y = pos.y, z = pos.z + dir.z}
     elseif buildy == 0 then
         buildpos = {x = pos.x - dir.x, y = pos.y, z = pos.z - dir.z}
