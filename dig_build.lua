@@ -184,7 +184,7 @@ function bot_build(pos, buildy, filter, mode)
                     end
                     a=a+1
                 end
-                if found then
+                if found and minetest.registered_nodes[found] then
                     minetest.set_node(buildpos, {name = found})
                     -- creative: do not consume items
                 end
