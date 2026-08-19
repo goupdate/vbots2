@@ -1,0 +1,121 @@
+-- timer.lua � Bot tick loop: gravity check, command dispatch, skip handling, magnet pickup, punch toggle
+ 
+function punch_bot(pos,player)
+    local meta = minetest.get_meta(pos)
+    local bot_owner = meta:get_string("owner")
+    if bot_owner == player:get_player_name() then
+        local item = player:get_wielded_item():get_name()
+        if item == "" then
+            vbots2.bot_togglestate(pos)
+        end
+    end
+end
+
+local function bot_pickup_items(pos)
+    local meta = minetest.get_meta(pos)
+    local inv = meta:get_inventory()
+    local objects = minetest.get_objects_inside_radius(pos, 1.8)
+    for _, obj in ipairs(objects) do
+        if obj and obj:get_luaentity() and obj:get_luaentity().name == "__builtin:item" then
+            local stack = ItemStack(obj:get_luaentity().itemstring)
+            if not stack:is_empty() then
+                bot_add_items(inv, "main", stack)
+                obj:remove()
+            end
+        end
+    end
+end
+
+function bot_handletimer(pos)
+    bot_pickup_items(pos)
+    local meta = minetest.get_meta(pos)
+
+    -- sync minimap marker position + color
+    local bot_key = meta:get_string("key")
+    local bi = vbots2.bot_info[bot_key]
+    if bi and bi.marker then
+        bi.marker:set_pos({x = pos.x, y = pos.y + 0.5, z = pos.z})
+        local tex = (meta:get_float("nav_retry") > 0) and "vbots_marker_wait.png" or "vbots_marker_on.png"
+        bi.marker:set_properties({textures = {tex}})
+    end
+    if bi and bi.body then
+        bi.body:set_pos({x = pos.x, y = pos.y + 0.5, z = pos.z})
+    end
+
+    local inv = meta:get_inventory()
+    local PC = meta:get_int("PC")
+    local PR = meta:get_int("PR")
+    local invname = "p"..PR
+    local stack = meta:get_string("stack")
+
+    -- stay on nav command if bot is pathfinding
+    if meta:get_int("nav_active") == 1 then
+        PR = meta:get_int("nav_pr")
+    end
+
+    local taken = inv:get_stack(invname, PC)
+    local command = taken:get_name()
+
+    local todo = meta:get_int("repeat")
+    if todo == 0 then
+        -- only advance PC if not navigating
+        if meta:get_int("nav_active") ~= 1 then
+            PC = PC + 1
+        end
+        while(command == "" and PC<=56) do
+            taken = inv:get_stack(invname, PC)
+            command = taken:get_name()
+            PC=PC+1
+        end
+        local hasarg = string.split(inv:get_stack(invname, PC):get_name(),"_")
+        -- print( PC.." "..dump(hasarg))
+        -- skip arg consumption for commands that read their own slot args
+        local no_repeat = (command == "vbots2:gt_check"
+            or command == "vbots2:lt_check" or command == "vbots2:gte_check"
+            or command == "vbots2:lte_check" or command == "vbots2:eq_check"
+            or command == "vbots2:neq_check" or command == "vbots2:dig_check"
+            or command == "vbots2:sign_read" or command == "vbots2:sign_print"
+            or command == "vbots2:count")
+        if not no_repeat and hasarg[1] == "vbots2:number" then
+            if tonumber(hasarg[2])>1 then
+                meta:set_int("repeat", hasarg[2]-1)
+            end
+            PC=PC+1
+        elseif not no_repeat and hasarg[1] == "vbots2:var" then
+            local val = meta:get_int("var_" .. hasarg[2])
+            if val > 1 then
+                meta:set_int("repeat", val - 1)
+            end
+            PC=PC+1
+        end
+    else
+        command = inv:get_stack(invname, PC-2):get_name()
+        meta:set_int("repeat", todo-1)
+    end
+    meta:set_int("PC",PC)
+    meta:set_int("PR",PR)
+    meta:set_string("stack",stack)
+    if PC<=56 then
+        -- print("mainloop PR:"..meta:get_int("PR")..
+        --   " PC:"..meta:get_int("PC")..
+        --   " R:"..meta:get_int("repeat")..
+        --   " : "..command)
+        bot_parsecommand(pos, command)
+        local skip = meta:get_int("skip")
+        if skip > 0 then
+            PC = meta:get_int("PC") + skip
+            meta:set_int("PC", PC)
+            meta:set_int("skip", 0)
+        end
+        return true
+    else
+        -- print("Program "..PR.." ending.")
+        if PR ~=0 then
+            pull_state(pos)
+            return true
+        else
+            vbots2.bot_togglestate(pos)
+            return false
+        end
+    end
+end
