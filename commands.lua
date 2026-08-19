@@ -77,20 +77,12 @@ function bot_parsecommand(pos,item)
         local PC = meta:get_int("PC")
         local filter = inv:get_stack("p"..PR, PC):get_name()
         bot_build(pos, 0, filter)
-        -- step backward: build appeared in front, bot moves back
-        local fdir = minetest.facedir_to_dir(minetest.get_node(pos).param2)
-        local newpos = {x = pos.x + fdir.x, y = pos.y, z = pos.z + fdir.z}
-        position_bot(pos, newpos, meta:get_string("owner"), meta:get_string("name"))
     elseif item == "vbots2:build_behind" then
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
         local PC = meta:get_int("PC")
         local filter = inv:get_stack("p"..PR, PC):get_name()
         bot_build(pos, 0, filter, true)
-        -- step forward: build appeared behind, bot moves forward
-        local fdir2 = minetest.facedir_to_dir(minetest.get_node(pos).param2)
-        local newpos2 = {x = pos.x - fdir2.x, y = pos.y, z = pos.z - fdir2.z}
-        position_bot(pos, newpos2, meta:get_string("owner"), meta:get_string("name"))
     elseif item == "vbots2:mode_build_down" then
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")

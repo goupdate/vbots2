@@ -338,7 +338,7 @@ Mine forward in a loop, but stop when you hit stone:
 ![build](textures/vbots_mode_build.png)
 → If chest is **ahead**: transfers first item from inventory.  
 → ![build](textures/vbots_mode_build.png) \+ [Stone]: transfers one stone to chest.  
-→ If no chest ahead: places a block behind the bot.
+→ If no chest ahead: places a block ahead.
 
 ---
 
