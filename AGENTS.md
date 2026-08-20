@@ -113,7 +113,7 @@ forgotten copy.
 | Shot | 40 | 30 blocks, 90° cone | 6s | Snowball projectile (gravity=-22, speed=25, y-comp=+9) |
 | bug_check | — | 5 blocks | — | skip=1 if hostile found |
 | damaged_check | — | — | — | skip=1 if attacked in last 3s |
-| turn_danger | — | 30 blocks (sphere, ×N multiplier) | — | turn to attacker/LoS target; only visible threats (air/passable in between); no turn if no target |
+| turn_danger | — | 30 blocks (sphere, ×N multiplier, stacked up to ×49) | — | turn to attacker/LoS target; only visible threats (air/passable in between); no turn if no target |
 
 - Zombie HP = 20. Laser = 2-shot kill, Shot = 1-shot kill.
 - `is_hostile_entity(ent)`: checks `ent.type == "monster"` OR `ent.hostile` OR `ent._is_hostile` OR `ent._attack` OR `ent.passive == false`, then falls back to definition check.

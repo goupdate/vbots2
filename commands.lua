@@ -370,11 +370,10 @@ elseif item == "vbots2:turn_danger" then
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)
         local radius = 30
-        -- multiplier: number item consumed as repeat sits one slot before PC
-        local mult_name = prog_inv:get_stack("p" .. meta:get_int("PR"), meta:get_int("PC") - 1):get_name()
-        local mult = mult_name:match("^vbots2:number_(%d)$")
-        if mult then
-            radius = radius * tonumber(mult)
+        -- combined multiplier of all consecutive numbers/vars after command
+        local mult = meta:get_int("repeat_mult")
+        if mult > 1 then
+            radius = radius * mult
         end
         local nearest = player and find_nearest_hostile(pos, radius, player, false)
         -- recently attacked: prefer the attacker, but only if it is still present
