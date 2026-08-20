@@ -159,6 +159,34 @@ function bot_shoot(pos, meta, cfg)
     end
 end
 
+-------------------------------------
+-- Line-of-sight: check if bot has a clear view to a target point.
+-- Only air, liquids, and passable-through nodes (flora, grass, plant,
+-- flower, torch, attached_node, leaves) are transparent — any other
+-- walkable node blocks the view.
+-- Used by laser, shot, and turn_danger.
+-------------------------------------
+function has_clear_los(pos, tpos)
+    local eye = {x = pos.x, y = pos.y + 0.6, z = pos.z}
+    local aim_pos = {x = tpos.x, y = (tpos.y or 0) + 1, z = tpos.z}
+    local beam_vec = vector.subtract(aim_pos, eye)
+    local beam_len = vector.length(beam_vec)
+    if beam_len == 0 then return true end
+    local beam_dir = vector.normalize(beam_vec)
+    for s = 1, math.floor(beam_len * 2) do                 -- loop along beam
+        local p = vector.add(eye, vector.multiply(beam_dir, s * 0.5))
+        local pnode = minetest.get_node({x=math.floor(p.x+0.5), y=math.floor(p.y+0.5), z=math.floor(p.z+0.5)})
+        local pndef = minetest.registered_nodes[pnode.name]
+        if pndef and pndef.walkable then                    -- if walkable
+            local g = pndef.groups or {}
+            if not g.flora and not g.grass and not g.plant and not g.flower and not g.torch and not g.attached_node and not g.leaves then
+                return false                                -- blocked by solid wall
+            end                                             -- if non-passable walkable
+        end                                                 -- if walkable
+    end                                                     -- loop along beam
+    return true
+end
+
 function is_valid_target(ent, obj, player)
     if not ent or not ent.name then return false end
     if ent.name == "__builtin:item" then return false end

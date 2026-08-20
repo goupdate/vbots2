@@ -385,8 +385,10 @@ elseif item == "vbots2:turn_danger" then
                 if ap then
                     local attacker = find_nearest_hostile(ap, 4, player, false)
                     if attacker then
-                        bot_face_toward(pos, ap)
-                        return
+                        if has_clear_los(pos, ap) then
+                            bot_face_toward(pos, ap)
+                            return
+                        end                             -- if clear los
                     end
                 end
             end
@@ -394,10 +396,10 @@ elseif item == "vbots2:turn_danger" then
         -- turn only when a target is actually found (no target = no turn)
         if nearest then
             local ep = nearest:get_pos()
-            if ep then
+            if ep and has_clear_los(pos, ep) then
                 bot_face_toward(pos, ep)
                 return
-            end
+            end                                         -- if has los
         end
         -- no hostile nearby: sparks only, bot does NOT turn anywhere
         minetest.add_particlespawner({amount = 5, time = 0.3,
