@@ -39,10 +39,10 @@ end
 -------------------------------------
 -- Main panel generators
 -------------------------------------
-local function panel_commands()
+local function panel_commands(pvp)
     local commands = {
         {"move_forward","move_backward","move_down","move_up","move_home","go_player"},
-        {"turn_clockwise","turn_anticlockwise","turn_random","turn_danger"},
+        {"turn_clockwise","turn_anticlockwise","turn_random","turn_danger","p2p_on","p2p_off"},
         {"mode_dig_up","mode_dig","mode_dig_down","mode_build_up","mode_build","build_behind","mode_build_down"},
         {"var_a","var_b","var_c","var_d","sign_read","sign_print","count"},
         {"eq_check","neq_check","dig_check","gt_check","lt_check","gte_check","lte_check"},
@@ -54,13 +54,14 @@ local function panel_commands()
     for row,namelist in pairs(commands) do
         panel = panel .. button_row(0,row,namelist)
     end
+    panel = panel .. highlight(5-pvp,2,1,1,"a","a","f")
     return panel
 end
 
-local function panel_main(pos,mode)
+local function panel_main(pos,mode,pvp)
     local panel
     if mode == 0 then
-        panel = panel_commands()
+        panel = panel_commands(pvp)
     else
         panel = "list[current_player;main;0,5;8,4;]"..
                 "list[nodemeta:" .. pos .. ";main;0,1;8,4;]"..
@@ -133,7 +134,7 @@ local function get_formspec(pos,meta)
                      .."field[3,0.2;3,1;bot_name;;" ..bot_name.. "]"
                      .."image_button[5.5,0;1,1;vbots_gui_check.png;bot_rename;]"
                      .."tooltip[5.5,0;1,1;Rename]"
-                     ..panel_main(bot_pos,fs_panel)
+                     ..panel_main(bot_pos,fs_panel,meta:get_int("pvp"))
                      ..panel_code(bot_pos,fs_program)
 	return formspec
 end

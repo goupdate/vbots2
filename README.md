@@ -229,12 +229,15 @@ Place a number **after** a command to repeat it (N−1) additional times. Works 
 | ![bug_check](textures/vbots_bug_check.png) | **Bug?** | Skip next command if hostile mob within 5 blocks |
 | ![damaged_check](textures/vbots_damaged_check.png) | **Damaged?** | Skip next command if bot was attacked in last 3 seconds |
 | ![turn_danger](textures/vbots_turn_danger.png) | **Turn→** | Turn toward attacker direction (last 3s). Sparks only if no recent attack. |
+| ![p2p_on](textures/vbots_p2p_on.png) | **P2P On** | Player-vs-player mode: any other player is treated as hostile. Active button is highlighted in the panel. |
+| ![p2p_off](textures/vbots_p2p_off.png) | **P2P Off** | Default: fire only at mobs, never at players. |
 
 **Laser & Shot** fire only within a 90° cone in the bot's facing direction. Both aim at the target's center (y+1) and perform a line-of-sight check (ignores flora, grass, plants, flowers, torches, leaves).
 **Shot** spawns a projectile (`vbots2:projectile_snowball`) with snowball texture, direct flight path (no gravity), speed ~6.7 blocks/s (~3s per 20 blocks), 1.5-block hit radius, and 5s timeout.
 **[Damaged?]** and **[Turn→]** track damage via the bot's combat entity (`vbots2:bot_body`) — works with any mob attack.
 Bot uses `is_hostile_entity()`: checks `type=="monster"`, `hostile`, `_is_hostile`, `_attack`, `passive==false` flags on runtime entity + registered definition fallback.
 `is_valid_target()` excludes dropped items, vbots2:* entities, mcl_burning:*, mcl_wieldview:*, and any player.
+In **P2P On** mode any other player becomes a valid target for Laser, Shot, Bug?, Turn→ and the ram — the bot's owner is always excluded.
 Bot body (`vbots2:bot_body`): type=animal, HP=20, invisible (`visual_size={0,0,0}`), has `hostile=true` and `_attack=1` flags so mobs naturally target it. Mobs with `specific_attack` table get `"vbots2:bot_body"` added via unconditional injection at mod load (1s delay).
 Zombie HP = 20.
 
@@ -248,6 +251,7 @@ vbots2 introduces several behavioral changes:
 - **No gravity** — the bot no longer falls when the block below is air. It can float in mid-air indefinitely, allowing aerial platforms and ceiling work.
 - **Teleport navigation** — ![home](textures/vbots_move_home.png), ![go_player](textures/vbots_go_player.png), and ![goto_pos](textures/vbots_goto_pos.png) all teleport instantly instead of pathfinding. The bot vanishes and reappears at the target.
 - **Move Up** — ![up](textures/vbots_move_up.png) lets the bot move one step upward, complementing the existing Move Down command.
+- **P2P mode** — ![p2p_on](textures/vbots_p2p_on.png) makes the bot treat any other player as a hostile target (Laser, Shot, Bug?, Turn→ and the ram). ![p2p_off](textures/vbots_p2p_off.png) returns to mobs-only combat. The active mode button is highlighted in the panel.
 
 ---
 

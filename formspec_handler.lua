@@ -124,6 +124,12 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                     "button[1,3.3;3,1;okgo;Set & Insert]"
                 minetest.after(0.1, minetest.show_formspec, player:get_player_name(), formname, fs)
             end
+            if fields.p2p_on then
+                meta:set_int("pvp", 1)
+            end
+            if fields.p2p_off then
+                meta:set_int("pvp", 0)
+            end
             if not fields.exit and not fields.run then
                 for f,v in pairs(fields) do
                     -- f1-f6 are single-token (no underscore)

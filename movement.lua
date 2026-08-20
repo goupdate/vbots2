@@ -39,33 +39,42 @@ end
 
 -- Find nearest hostile entity within radius. If in_front_only, only consider
 -- targets inside the bot's 90deg frontal cone (fdot >= 0.707).
+-- In P2P mode (meta pvp=1) any other player is a hostile target too.
 function find_nearest_hostile(pos, radius, player, in_front_only)
     local nearest, nearest_dist = nil, 999
+    local meta = minetest.get_meta(pos)
+    local pvp = meta:get_int("pvp") == 1
+    local owner = meta:get_string("owner")
     local facing_dir
     if in_front_only then
         facing_dir = minetest.facedir_to_dir(minetest.get_node(pos).param2)
     end
     for _, obj in ipairs(minetest.get_objects_inside_radius(pos, radius)) do  -- loop over objects
-        if obj and obj:get_luaentity() then        -- if object has luaentity
+        local hostile = false
+        if obj and obj:is_player() then                     -- if player object
+            local pname = obj:get_player_name()
+            hostile = pvp and pname ~= "" and pname ~= owner
+        elseif obj and obj:get_luaentity() then             -- if object has luaentity
             local ent = obj:get_luaentity()
-            if is_valid_target(ent, obj, player) and is_hostile_entity(ent) then  -- if valid hostile
-                local epos = obj:get_pos()
-                if epos then                        -- if position present
-                    local d = vector.distance(pos, epos)
-                    local consider = true
-                    if in_front_only and d > 0 then  -- if cone filter
-                        local to_target = vector.normalize({x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z})
-                        local fdot = -(facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z)
-                        consider = fdot >= 0.707
-                    elseif in_front_only then       -- if cone filter
-                        consider = false
-                    end                             -- if cone filter
-                    if consider and d < nearest_dist then  -- if best so far
-                        nearest, nearest_dist = obj, d
-                    end                             -- if best so far
-                end                                 -- if position present
-            end                                     -- if valid hostile
-        end                                         -- if object has luaentity
+            hostile = is_valid_target(ent, obj, player) and is_hostile_entity(ent)
+        end                                                 -- if player object
+        if hostile then                                     -- if hostile target
+            local epos = obj:get_pos()
+            if epos then                        -- if position present
+                local d = vector.distance(pos, epos)
+                local consider = true
+                if in_front_only and d > 0 then  -- if cone filter
+                    local to_target = vector.normalize({x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z})
+                    local fdot = -(facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z)
+                    consider = fdot >= 0.707
+                elseif in_front_only then       -- if cone filter
+                    consider = false
+                end                             -- if cone filter
+                if consider and d < nearest_dist then  -- if best so far
+                    nearest, nearest_dist = obj, d
+                end                             -- if best so far
+            end                                 -- if position present
+        end                                     -- if hostile target
     end                                             -- loop over objects
     return nearest
 end
@@ -82,19 +91,27 @@ function position_bot(pos,newpos)
         minetest.close_formspec(bot_owner, bot_key)
     end
     if not minetest.is_protected(newpos, bot_owner) then
-        -- ram: deal max damage to mobs at destination
+        -- ram: deal max damage to mobs at destination (and players in P2P mode)
+        local pvp = meta:get_int("pvp") == 1
         local mobs = minetest.get_objects_inside_radius(newpos, 0.8)
         for _, obj in ipairs(mobs) do
-            if obj and obj:get_luaentity() then
+            local hit = false
+            if obj and obj:is_player() then          -- if player object
+                local pname = obj:get_player_name()
+                hit = pvp and pname ~= "" and pname ~= bot_owner
+            elseif obj and obj:get_luaentity() then  -- if mob entity
                 local ent = obj:get_luaentity()
-                -- punch mobs (skip items and players)
+                -- punch mobs (skip items and this bot's own entities)
                 if ent.name ~= "__builtin:item" and ent.name ~= "vbots2:minimap_marker"
                         and ent.name ~= "vbots2:bot_body"
                         and obj ~= player then
-                    obj:punch(obj, 1.0, {full_punch_interval = 0.1, damage_groups = {fleshy = 100}}, nil)
+                    hit = true
                 end
-            end
-        end
+            end                                      -- if player object
+            if hit then                              -- if hittable
+                obj:punch(obj, 1.0, {full_punch_interval = 0.1, damage_groups = {fleshy = 100}}, nil)
+            end                                      -- if hittable
+        end                                          -- loop over objects
         local moveto_node = minetest.get_node(newpos)
         -- cut plants on the way
         local is_plant = false

@@ -249,6 +249,8 @@ minetest.register_entity("vbots2:projectile_snowball", {
     },
     _damage = 4,
     _shooter = nil,
+    _pvp = false,
+    _owner_name = "",
     on_activate = function(self, staticdata)
         self.object:set_acceleration({x = 0, y = 0, z = 0})
         self._timer = 0
@@ -278,11 +280,26 @@ on_step = function(self, dtime)
             end
         end
         for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 1.5)) do
-            if obj ~= self.object and obj:get_luaentity() then
-                local ent = obj:get_luaentity()
-                if ent and ent.name ~= "__builtin:item" and not ent.name:match("^vbots2:") then
+            if obj ~= self.object then
+                local hittable = false
+                local hitname = "?"
+                if obj:is_player() then
+                    -- P2P: only hit other players when active and not the owner
+                    local pname = obj:get_player_name()
+                    hitname = pname
+                    if self._pvp and pname ~= "" and pname ~= self._owner_name then
+                        hittable = true
+                    end
+                elseif obj:get_luaentity() then
+                    local ent = obj:get_luaentity()
+                    hitname = ent and ent.name or "?"
+                    if ent and ent.name ~= "__builtin:item" and not ent.name:match("^vbots2:") then
+                        hittable = true
+                    end
+                end
+                if hittable then
                     local hp = obj:get_hp()
-                    minetest.log("action", "[vbots2] proj: HIT " .. ent.name .. " hp=" .. tostring(hp) .. " dmg=" .. tostring(self._damage) .. " pos=" .. minetest.pos_to_string(pos))
+                    minetest.log("action", "[vbots2] proj: HIT " .. tostring(hitname) .. " hp=" .. tostring(hp) .. " dmg=" .. tostring(self._damage) .. " pos=" .. minetest.pos_to_string(pos))
                     obj:set_hp(math.max(0, hp - self._damage))
                     self.object:remove()
                     return

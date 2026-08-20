@@ -119,7 +119,10 @@ function bot_shoot(pos, meta, cfg)
             vbots2.log(meta:get_string("name"), P .. " SPAWNED vel=" .. string.format("%.0f,%.0f,%.0f", vel.x, vel.y, vel.z))
             obj:set_velocity(vel)
             local tent = obj:get_luaentity()
-            if tent then tent._damage = cfg.damage; tent._shooter = player end
+            if tent then tent._damage = cfg.damage; tent._shooter = player
+                tent._pvp = meta:get_int("pvp") == 1
+                tent._owner_name = meta:get_string("owner")
+            end
             minetest.sound_play("mcl_bows_bow_shoot", {pos = pos, max_hear_distance = 16})
         else
             vbots2.log(meta:get_string("name"), P .. " FAILED to spawn")
@@ -141,7 +144,13 @@ function bot_shoot(pos, meta, cfg)
                 texture = "vbots_laser_spark.png", glow = 10})
         end
         local ent = nearest:get_luaentity()
-        if ent and ent.object then
+        if nearest:is_player() then
+            -- P2P: damage player target directly
+            local hp_before = nearest:get_hp()
+            local hp_after = math.max(0, hp_before - cfg.damage)
+            nearest:set_hp(hp_after)
+            vbots2.log(meta:get_string("name"), string.format(P .. " DMG player=%s aim=%.1f,%.1f,%.1f hp:%d→%d", nearest:get_player_name(), aim_pos.x, aim_pos.y, aim_pos.z, hp_before, hp_after))
+        elseif ent and ent.object then
             local hp_before = ent.object:get_hp()
             local hp_after = math.max(0, hp_before - cfg.damage)
             ent.object:set_hp(hp_after)

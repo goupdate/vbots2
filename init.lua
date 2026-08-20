@@ -150,6 +150,8 @@ meta:set_int("repeat",0)
     meta:set_int("home_tz",0)
     meta:set_float("laser_last",0)
     meta:set_float("shot_last",0)
+    meta:set_int("pvp",0)
+    meta:mark_as_private("pvp")
     meta:set_float("damage_time",0)
     meta:set_string("damage_pos","")
 end
