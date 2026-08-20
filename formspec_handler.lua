@@ -7,6 +7,9 @@ local function bot_rekey(bot_key,meta)
     vbots2.bot_info[new_key] = vbots2.bot_info[bot_key]
     vbots2.bot_info[bot_key] = nil
     meta:set_string("key", new_key)
+    -- sync live detached inventory to mirror before moving it (on_put fires
+    -- only for player actions, not programmatic add_item — see lua_api.md)
+    vbots2.save_prog_inv(bot_key)
     -- move the program mod_storage mirror to the new key
     local old_data = mod_storage:get_string("botprog_" .. bot_key)
     if old_data ~= "" then
