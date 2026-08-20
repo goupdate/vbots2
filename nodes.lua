@@ -89,30 +89,32 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
         end,
 on_destruct = function(pos)
             local meta = minetest.get_meta(pos)
-            -- skip inventory drop during bot movement (position_bot sets moving flag)
-            if meta:get_string("moving") ~= "1" then
-                local inv = meta:get_inventory()
-                for i = 1, inv:get_size("main") do
-                    local stack = inv:get_stack("main", i)
-                    if not stack:is_empty() then
-                        local drop_pos = {x = pos.x, y = pos.y + 0.5, z = pos.z}
-                        minetest.add_item(drop_pos, stack)
-                    end
-                end
+            -- during movement (position_bot sets moving flag) the bot continues
+            -- at newpos: keep inventory, entities and bot_info entry intact
+            if meta:get_string("moving") == "1" then
+                return
             end
+            local inv = meta:get_inventory()
+            for i = 1, inv:get_size("main") do      -- loop over slots
+                local stack = inv:get_stack("main", i)
+                if not stack:is_empty() then        -- if slot non-empty
+                    local drop_pos = {x = pos.x, y = pos.y + 0.5, z = pos.z}
+                    minetest.add_item(drop_pos, stack)
+                end                                 -- if slot non-empty
+            end                                     -- loop over slots
             local bot_key = meta:get_string("key")
             local bi = vbots2.bot_info[bot_key]
             -- remove all vbots2 entities at this position
-            for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 1.5)) do
-                if obj and obj:get_luaentity() then
+            for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 1.5)) do  -- loop over objects
+                if obj and obj:get_luaentity() then -- if object entity
                     local ename = obj:get_luaentity().name
-                    if ename and ename:find("^vbots2:") then
+                    if ename and ename:find("^vbots2:") then  -- if vbots2 entity
                         obj:remove()
-                    end
-                end
-            end
+                    end                             -- if vbots2 entity
+                end                                 -- if object entity
+            end                                     -- loop over objects
             vbots2.bot_info[bot_key] = nil
- clean_bot_table()
+            clean_bot_table()
         end
 })
 end

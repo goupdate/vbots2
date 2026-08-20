@@ -158,6 +158,10 @@ function position_bot(pos,newpos)
                 if behind_def and behind_def.on_rightclick then
                     behind_def.on_rightclick(pos, behind_node, player)
                 end
+                -- keep bot_info position in sync so removeall/formspec find the bot
+                if vbots2.bot_info[bot_key] then
+                    vbots2.bot_info[bot_key].pos = newpos
+                end
                 minetest.check_for_falling(newpos)
                 return
             end
@@ -180,6 +184,10 @@ function position_bot(pos,newpos)
                 minetest.get_meta(newpos):from_table(hold)
             end
             minetest.set_node(pos,{name="air"})
+            -- keep bot_info position in sync so removeall/formspec find the bot
+            if vbots2.bot_info[bot_key] then
+                vbots2.bot_info[bot_key].pos = newpos
+            end
         else
             minetest.sound_play("error",{pos = newpos, gain = 10})
         end
