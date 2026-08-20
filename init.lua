@@ -40,7 +40,7 @@ end
 -------------------------------------
 vbots2.save_prog_inv = function(bot_key)
     if bot_key == "" then return end
-    local inv = minetest.get_detached_inventory("botprog_" .. bot_key)
+    local inv = minetest.get_inventory({type="detached", name="botprog_" .. bot_key})
     if not inv then return end
     local lists = {}
     for i = 0, 6 do                  -- loop over program lists
@@ -57,7 +57,7 @@ end
 
 vbots2.ensure_prog_inv = function(bot_key)
     local name = "botprog_" .. bot_key
-    local inv = minetest.get_detached_inventory(name)
+    local inv = minetest.get_inventory({type="detached", name=name})
     if inv then return inv end
     inv = minetest.create_detached_inventory(name, {
         -- duplicate non-vbots2 items (block filters) back to player's main
