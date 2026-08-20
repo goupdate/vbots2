@@ -7,6 +7,12 @@ local function bot_rekey(bot_key,meta)
     vbots2.bot_info[new_key] = vbots2.bot_info[bot_key]
     vbots2.bot_info[bot_key] = nil
     meta:set_string("key", new_key)
+    -- move the program mod_storage mirror to the new key
+    local old_data = mod_storage:get_string("botprog_" .. bot_key)
+    if old_data ~= "" then
+        mod_storage:set_string("botprog_" .. new_key, old_data)
+        mod_storage:set_string("botprog_" .. bot_key, "")
+    end
     return new_key
 end
 
@@ -16,12 +22,12 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
     -- Bot main formspec
     if bot_data then
         -- print("Main Bot formspec received:")
-        local inv=minetest.get_inventory({type="node", pos=bot_data.pos})
         local meta = minetest.get_meta(bot_data.pos)
         local meta_bot_key = meta:get_string("key")
         -- print(bot_key.." vs "..meta_bot_key)
         if bot_key == meta_bot_key then
             bot_key = bot_rekey(bot_key,meta)
+            local prog_inv = vbots2.ensure_prog_inv(meta:get_string("key"))
             if fields.run then
                 minetest.after(0, vbots2.bot_togglestate, bot_data.pos, "on")
             end
@@ -64,24 +70,12 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                     minetest.chat_send_player(pname,
                         "[vbots2] Removed " .. #to_remove .. " bot(s).")
                 else
-                    -- first press (or timer reset): stop all player's bots
-                    local stopped = {}
-                    for k, v in pairs(vbots2.bot_info) do
-                        if v.owner == pname then
-                            local node = minetest.get_node(v.pos)
-                            if node.name == "vbots2:on" then
-                                vbots2.bot_togglestate(v.pos, "off")
-                                table.insert(stopped, v.name .. " (" ..
-                                    v.pos.x .. "," .. v.pos.y .. "," .. v.pos.z .. ")")
-                            end
-                        end
-                    end
+                    -- first press (or timer reset): stop all player's bots.
+                    -- global flag: each running bot self-stops on its next tick
+                    vbots2.stop_all[pname] = true
                     minetest.chat_send_player(pname,
                         "[vbots2] All bots stopped. Press again within 2s to REMOVE.")
-                    if #stopped > 0 then
-                        minetest.log("action", "[vbots2] " .. pname .. " stopped: " ..
-                            table.concat(stopped, ", "))
-                    end
+                    minetest.log("action", "[vbots2] " .. pname .. " stopped all bots")
                     vbots2.removeall_last[pname] = now
                 end
             end
@@ -104,12 +98,12 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
             end
             if fields.trash then
                 local last = 0
-                local content = inv:get_list("p"..meta:get_int("program"))
+                local content = prog_inv:get_list("p"..meta:get_int("program"))
                 for a = 1,56 do
                     if not content[a]:is_empty() then last=a end
                 end
                 if last>0 then
-                    inv:set_stack("p"..meta:get_int("program"), last, ItemStack(nil))
+                    prog_inv:set_stack("p"..meta:get_int("program"), last, ItemStack(nil))
                 end
             end
             if fields.goto_pos then
@@ -135,7 +129,7 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                     -- f1-f6 are single-token (no underscore)
                     local nametable=string.split(f, "_")
                     if f == "f1" or f == "f2" or f == "f3" or f == "f4" or f == "f5" or f == "f6" or f == "count" or f == "laser" or f == "shot" or f == "turn_danger" then
-                        local leftover = inv:add_item("p"..meta:get_int("program"), ItemStack("vbots2:"..f))
+                        local leftover = prog_inv:add_item("p"..meta:get_int("program"), ItemStack("vbots2:"..f))
                     elseif #nametable>=2 then
                         if nametable[1]=="sub" then
                             meta:set_int("program", nametable[2])
@@ -162,7 +156,7 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                                 nametable[1]=="redstone" or
                                 nametable[1]=="bug" then
                             --print("COMMAND!!!!!!!")
-                            local leftover = inv:add_item("p"..meta:get_int("program"), ItemStack("vbots2:"..f))
+                            local leftover = prog_inv:add_item("p"..meta:get_int("program"), ItemStack("vbots2:"..f))
                         end
                     end
                 end
@@ -179,7 +173,7 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
             if bot_data then
                 local pos = bot_data.pos
                 local meta = minetest.get_meta(pos)
-                local inv = meta:get_inventory()
+                local prog_inv = vbots2.ensure_prog_inv(meta:get_string("key"))
                 minetest.close_formspec(player:get_player_name(), bot_key)
                 if fields.okgo then
                     local x = tonumber(fields.gotox)
@@ -192,7 +186,7 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                         smeta:set_int("pos_y", y)
                         smeta:set_int("pos_z", z)
                         smeta:set_string("description", "Go to " .. x .. "," .. y .. "," .. z)
-                        inv:add_item("p"..meta:get_int("program"), stack)
+                        prog_inv:add_item("p"..meta:get_int("program"), stack)
                     end
                 end
                 minetest.after(0.1, vbots2.show_formspec, player, pos)
@@ -203,7 +197,7 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
             if bot_data then
             local pos=bot_data.pos
             local meta = minetest.get_meta(pos)
-            local inv = meta:get_inventory()
+            local prog_inv = vbots2.ensure_prog_inv(meta:get_string("key"))
 
             minetest.close_formspec(player:get_player_name(), bot_key)
             if fields.delete then
@@ -228,15 +222,15 @@ minetest.register_on_player_receive_fields(function(player, bot_key, fields)
                     -- print(dump(inv_involved))
                     local size
                     for i,_ in pairs(inv_involved) do
-                        size = inv:get_size(i)
+                        size = prog_inv:get_size(i)
                         for a=1,size do
-                            inv:set_stack(i,a, "")
+                            prog_inv:set_stack(i,a, "")
                         end
                     end
                     for _,v in pairs(inv_list) do
                         local parts = string.split(v," ")
                         if #parts == 3 then
-                            inv:add_item(parts[1],parts[2].." "..parts[3])
+                            prog_inv:add_item(parts[1],parts[2].." "..parts[3])
                         end
                     end
                 end

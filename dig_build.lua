@@ -21,9 +21,10 @@ if not minetest.is_protected(digpos, bot_owner) then
                 local bot_inv = minetest.get_inventory({type="node", pos=digpos})
                 if bot_inv then
                     local inv = minetest.get_inventory({type="node", pos=pos})
+                    local prog = vbots2.prog_inv(meta:get_string("key"))
                     local PC = meta:get_int("PC")
                     local PR = meta:get_int("PR")
-                    local filter = inv:get_stack("p"..PR, PC):get_name()
+                    local filter = prog:get_stack("p"..PR, PC):get_name()
                     if filter:find("^vbots2:") then filter = "" end
                     local taken = false
                     local bot_list = bot_inv:get_list("main")
@@ -59,9 +60,10 @@ if not minetest.is_protected(digpos, bot_owner) then
                     -- non-empty chest: take items
                     local inv=minetest.get_inventory({type="node", pos=pos})
                     -- read optional filter from next program slot
+                    local prog = vbots2.prog_inv(meta:get_string("key"))
                     local PC = meta:get_int("PC")
                     local PR = meta:get_int("PR")
-                    local filter = inv:get_stack("p"..PR, PC):get_name()
+                    local filter = prog:get_stack("p"..PR, PC):get_name()
                     if filter:find("^vbots2:") then filter = "" end
                     local taken = false
                     local chest_list = chest_inv:get_list("main")

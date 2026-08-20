@@ -228,7 +228,7 @@ Place a number **after** a command to repeat it (N−1) additional times. Works 
 | ![shot](textures/vbots_shot.png) | **Shot** | Throw snowball at nearest hostile (30 blocks, 90° cone, damage=40, 6s cooldown, projectile speed ~6.7). 1-shot zombie kill. |
 | ![bug_check](textures/vbots_bug_check.png) | **Bug?** | Skip next command if hostile mob within 5 blocks |
 | ![damaged_check](textures/vbots_damaged_check.png) | **Damaged?** | Skip next command if bot was attacked in last 3 seconds |
-| ![turn_danger](textures/vbots_turn_danger.png) | **Turn→** | Turn toward attacker direction (last 3s). Sparks only if no recent attack. |
+| ![turn_danger](textures/vbots_turn_danger.png) | **Turn→** | Turn toward attacker (last 3s) or nearest hostile (30-block sphere). Follow with **×N** (number button) to scale search radius to N×30. Turns only when a target is found — otherwise sparks, no turn. |
 | ![p2p_on](textures/vbots_p2p_on.png) | **P2P On** | Player-vs-player mode: any other player is treated as hostile. Active button is highlighted in the panel. |
 | ![p2p_off](textures/vbots_p2p_off.png) | **P2P Off** | Default: fire only at mobs, never at players. |
 

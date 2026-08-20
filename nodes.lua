@@ -53,40 +53,6 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
         can_dig = function(pos,player)
             return interact(player,pos)
         end,
-        -- duplicate non-vbots2 items when dragged from main to program
-        allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-            if listname:match("^p%d$") and player and stack and not stack:is_empty() then
-                local name = stack:get_name()
-                if not name:match("^vbots2:") then
-                    -- allow the put, but we'll restore the item in on_metadata_inventory_put
-                end
-            end
-            return stack:get_count()
-        end,
-        on_metadata_inventory_put = function(pos, listname, index, stack, player)
-            if listname:match("^p%d$") and player and stack and not stack:is_empty() then
-                local name = stack:get_name()
-                if not name:match("^vbots2:") then
-                    -- duplicate: restore a copy to player's main inventory
-                    local pinv = player:get_inventory()
-                    if pinv then
-                        pinv:add_item("main", stack)
-                    end
-                end
-            end
-        end,
-        on_metadata_inventory_take = function(pos, listname, index, stack, player)
-            if listname:match("^p%d$") and player and stack and not stack:is_empty() then
-                local name = stack:get_name()
-                if not name:match("^vbots2:") then
-                    -- return from program: remove from player's main (it was just added there)
-                    local pinv = player:get_inventory()
-                    if pinv then
-                        pinv:remove_item("main", stack)
-                    end
-                end
-            end
-        end,
 on_destruct = function(pos)
             local meta = minetest.get_meta(pos)
             -- during movement (position_bot sets moving flag) the bot continues
@@ -104,6 +70,8 @@ on_destruct = function(pos)
             end                                     -- loop over slots
             local bot_key = meta:get_string("key")
             local bi = vbots2.bot_info[bot_key]
+            -- drop the mod_storage program mirror of this bot
+            mod_storage:set_string("botprog_" .. bot_key, "")
             -- remove all vbots2 entities at this position
             for _, obj in ipairs(minetest.get_objects_inside_radius(pos, 1.5)) do  -- loop over objects
                 if obj and obj:get_luaentity() then -- if object entity

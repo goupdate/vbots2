@@ -79,7 +79,7 @@ end
 -------------------------------------
 -- Main panel generator
 -------------------------------------
-local function panel_code(pos,program)
+local function panel_code(bot_key,program)
 return button(9,0,"vbots_gui_run.png","run",true)
         --..button(11,0,"vbots_gui_check.png","check")
         ..button(13,0,"vbots_gui_nuke.png","removeall")
@@ -99,7 +99,7 @@ return button(9,0,"vbots_gui_run.png","run",true)
 --           .."listring[nodemeta:" .. pos .. ";p"..program.."]"
            ..highlight(6.5,0,2,1,"0","0","0")
 
-           .."list[nodemeta:" .. pos .. ";p"..program..";8,1;7,8;]"
+           .."list[detached:botprog_" .. bot_key .. ";p"..program..";8,1;7,8;]"
 --           .."listring[detached:bottrash;main]"
            ..highlight(8,1,7,8,"f","a","f")
 
@@ -135,7 +135,7 @@ local function get_formspec(pos,meta)
                      .."image_button[5.5,0;1,1;vbots_gui_check.png;bot_rename;]"
                      .."tooltip[5.5,0;1,1;Rename]"
                      ..panel_main(bot_pos,fs_panel,meta:get_int("pvp"))
-                     ..panel_code(bot_pos,fs_program)
+                     ..panel_code(bot_key,fs_program)
 	return formspec
 end
 

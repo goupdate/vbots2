@@ -7,6 +7,10 @@
 vbots2={}
 vbots2.modpath = minetest.get_modpath("vbots2")
 vbots2.bot_info = {}
+-- per-player global stop-all flag (bomb button): [owner] = true means no bot of
+-- this owner may run; every running bot checks it on its own tick and self-stops
+vbots2.stop_all = {}
+vbots2.pickup_ticks = {}
 
 local trashInv = minetest.create_detached_inventory(
                     "bottrash",
@@ -26,6 +30,89 @@ vbots2.enable_log = true
 function vbots2.log(bot_name, msg)
     if not vbots2.enable_log then return end
     minetest.log("action", "[vbots2] " .. tostring(bot_name) .. ": " .. tostring(msg))
+end
+
+-------------------------------------
+-- Program inventory helpers: bot programs (p0..p6) live in detached inventory
+-- botprog_<bot_key> mirrored to mod_storage["botprog_<bot_key>"]. Detached
+-- inventories die on server restart -> always (re)create from the mirror
+-- before use. See AGENTS.md "Inventory storage" rule.
+-------------------------------------
+vbots2.save_prog_inv = function(bot_key)
+    if bot_key == "" then return end
+    local inv = minetest.get_detached_inventory("botprog_" .. bot_key)
+    if not inv then return end
+    local lists = {}
+    for i = 0, 6 do                  -- loop over program lists
+        local listname = "p" .. i
+        local arr = {}
+        local size = inv:get_size(listname)
+        for a = 1, size do           -- loop over slots
+            arr[a] = inv:get_stack(listname, a):to_string()
+        end                          -- loop over slots
+        lists[listname] = arr
+    end                              -- loop over program lists
+    mod_storage:set_string("botprog_" .. bot_key, minetest.serialize(lists))
+end
+
+vbots2.ensure_prog_inv = function(bot_key)
+    local name = "botprog_" .. bot_key
+    local inv = minetest.get_detached_inventory(name)
+    if inv then return inv end
+    inv = minetest.create_detached_inventory(name, {
+        -- duplicate non-vbots2 items (block filters) back to player's main
+        on_put = function(inv2, listname, index, stack, player)
+            vbots2.save_prog_inv(bot_key)
+            if listname:match("^p%d$") and player and stack and not stack:is_empty() then
+                local itemname = stack:get_name()
+                if not itemname:match("^vbots2:") then  -- if non-command item
+                    local pinv = player:get_inventory()
+                    if pinv then
+                        pinv:add_item("main", stack)
+                    end
+                end                                     -- if non-command item
+            end
+        end,
+        on_take = function(inv2, listname, index, stack, player)
+            vbots2.save_prog_inv(bot_key)
+            if listname:match("^p%d$") and player and stack and not stack:is_empty() then
+                local itemname = stack:get_name()
+                if not itemname:match("^vbots2:") then  -- if non-command item
+                    local pinv = player:get_inventory()
+                    if pinv then
+                        pinv:remove_item("main", stack)
+                    end
+                end                                     -- if non-command item
+            end
+        end,
+        on_move = function(inv2, from_list, from_index, to_list, to_index, count, player)
+            vbots2.save_prog_inv(bot_key)
+        end,
+    })
+    for i = 0, 6 do                  -- loop over program lists
+        inv:set_size("p" .. i, 56)
+    end                              -- loop over program lists
+    -- restore from mod_storage mirror (survives server restart)
+    local data = mod_storage:get_string("botprog_" .. bot_key)
+    if data ~= "" then
+        local lists = minetest.deserialize(data)
+        if lists and type(lists) == "table" then
+            for i = 0, 6 do          -- loop over program lists
+                local listname = "p" .. i
+                local arr = lists[listname]
+                if arr then
+                    for a = 1, math.min(#arr, 56) do  -- loop over slots
+                        inv:set_stack(listname, a, ItemStack(arr[a]))
+                    end              -- loop over slots
+                end
+            end                      -- loop over program lists
+        end
+    end
+    return inv
+end
+
+vbots2.prog_inv = function(bot_key)
+    return vbots2.ensure_prog_inv(bot_key)
 end
 
 local function bot_namer()
@@ -68,6 +155,24 @@ vbots2.bot_restore = function(pos)
     local bot_key = meta:get_string("key")
     local bot_owner = meta:get_string("owner")
     local bot_name = meta:get_string("name")
+    -- one-time lazy migration: old bots keep programs in node meta p-lists
+    local inv = meta:get_inventory()
+    if inv:get_size("p0") > 0 then
+        local lists = {}
+        for i = 0, 6 do                  -- loop over program lists
+            local listname = "p" .. i
+            local arr = {}
+            for a = 1, inv:get_size(listname) do  -- loop over slots
+                arr[a] = inv:get_stack(listname, a):to_string()
+            end                          -- loop over slots
+            lists[listname] = arr
+        end                              -- loop over program lists
+        mod_storage:set_string("botprog_" .. bot_key, minetest.serialize(lists))
+        for i = 0, 6 do                  -- loop over program lists
+            inv:set_size("p" .. i, 0)
+        end                              -- loop over program lists
+    end                                  -- if migrating
+    vbots2.ensure_prog_inv(bot_key)
     if not vbots2.bot_info[bot_key] then
 vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
     -- minimap marker
@@ -98,15 +203,10 @@ vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
     local meta = minetest.get_meta(pos)
 	meta:set_string("infotext", bot_name .. " (" .. bot_owner .. ")")
     local inv = meta:get_inventory()
-    inv:set_size("p0", 56)
-    inv:set_size("p1", 56)
-    inv:set_size("p2", 56)
-    inv:set_size("p3", 56)
-    inv:set_size("p4", 56)
-    inv:set_size("p5", 56)
-    inv:set_size("p6", 56)
     inv:set_size("main", 32)
     inv:set_size("trash", 1)
+    -- programs live in detached inventory botprog_<key> (mirrored to mod_storage)
+    vbots2.ensure_prog_inv(bot_key)
 
     meta:set_int("program",0)
     meta:mark_as_private("program")
@@ -158,36 +258,35 @@ end
 
 vbots2.wipe_programs = function(pos)
     local meta = minetest.get_meta(pos)
-    local meta_table = meta:to_table()
-    local inv = meta:get_inventory()
-    local inv_list = {}
-    for i,t in pairs(meta_table.inventory) do
-        if i ~= "main" then
-            local size = inv:get_size(i)
-            for a=1,size do
-                inv:set_stack(i,a, "")
-            end
-        end
-    end
+    local bot_key = meta:get_string("key")
+    local inv = vbots2.ensure_prog_inv(bot_key)
+    for i = 0, 6 do                  -- loop over program lists
+        local listname = "p" .. i
+        for a = 1, inv:get_size(listname) do  -- loop over slots
+            inv:set_stack(listname, a, "")
+        end                          -- loop over slots
+    end                              -- loop over program lists
+    vbots2.save_prog_inv(bot_key)
 end
 
 vbots2.save = function(pos)
     vbots2.bot_restore(pos)
     local meta = minetest.get_meta(pos)
-    local meta_table = meta:to_table()
+    local bot_key = meta:get_string("key")
     local botname = meta:get_string("name")
     local name = meta:get_string("owner")
+    local inv = vbots2.ensure_prog_inv(bot_key)
     local inv_list = {}
-    for i,t in pairs(meta_table.inventory) do
-        if i ~= "main" then
-            for _,s in pairs(t) do
-                local itemname = s:get_name()
-                if s and s:get_count()>0 and itemname:sub(1,6)=="vbots2" then
-                    inv_list[#inv_list+1] = i.." "..s:get_name().." "..s:get_count()
-                end
-            end
-        end
-    end
+    for i = 0, 6 do                  -- loop over program lists
+        local listname = "p" .. i
+        for a = 1, inv:get_size(listname) do  -- loop over slots
+            local s = inv:get_stack(listname, a)
+            local itemname = s:get_name()
+            if s:get_count() > 0 and itemname:sub(1, 6) == "vbots2" then
+                inv_list[#inv_list+1] = listname.." "..itemname.." "..s:get_count()
+            end                      -- if vbots2 item
+        end                          -- loop over slots
+    end                              -- loop over program lists
     mod_storage:set_string(world_name..",vbotsep,"..name..",vbotsep,"..botname,minetest.serialize(inv_list))
 end
 
@@ -270,6 +369,8 @@ vbots2.bot_togglestate = function(pos,mode)
     end
     if mode == "on" then
         newname = "vbots2:on"
+        -- starting any bot lifts the owner's global stop-all flag
+        vbots2.stop_all[meta:get_string("owner")] = nil
         timer:start(1/meta:get_int("steptime"))
         meta:set_int("PC",0)
         meta:set_int("PR",0)
@@ -312,6 +413,14 @@ vbots2.bot_togglestate = function(pos,mode)
     end
 end
 
+
+minetest.register_on_shutdown(function()
+    for k, bi in pairs(vbots2.bot_info) do     -- loop over known bots
+        if bi and bi.pos then
+            vbots2.save_prog_inv(k)
+        end
+    end                                        -- loop over known bots
+end)
 
 dofile(vbots2.modpath.."/formspec.lua")
 dofile(vbots2.modpath.."/formspec_handler.lua")

@@ -27,12 +27,34 @@ local function bot_pickup_items(pos)
 end
 
 function bot_handletimer(pos)
-    bot_pickup_items(pos)
     local meta = minetest.get_meta(pos)
+
+    -- global stop-all (bomb button): owner flagged -> bot stops itself
+    if vbots2.stop_all[meta:get_string("owner")] then
+        vbots2.bot_togglestate(pos, "off")
+        return false
+    end
+
+    -- magnet pickup: scan for dropped items only every 5th tick (~2.5s at 0.5s steps)
+    local pt = vbots2.pickup_ticks
+    local pkey = meta:get_string("key")
+    local pc = (pt[pkey] or 0) + 1
+    if pc >= 5 then
+        pt[pkey] = 0
+        bot_pickup_items(pos)
+    else
+        pt[pkey] = pc
+    end
 
     -- sync minimap marker position + color
     local bot_key = meta:get_string("key")
     local bi = vbots2.bot_info[bot_key]
+    if not bi and bot_key ~= "" then
+        -- re-register after server restart: bot_info is memory-only, so a
+        -- running bot must restore its own entry (owner, pos, marker, body)
+        vbots2.bot_restore(pos)
+        bi = vbots2.bot_info[bot_key]
+    end
     if bi and bi.marker then
         bi.marker:set_pos({x = pos.x, y = pos.y + 0.5, z = pos.z})
         local tex = (meta:get_float("nav_retry") > 0) and "vbots_marker_wait.png" or "vbots_marker_on.png"
@@ -42,7 +64,8 @@ function bot_handletimer(pos)
         bi.body:set_pos({x = pos.x, y = pos.y + 0.5, z = pos.z})
     end
 
-    local inv = meta:get_inventory()
+    -- program slots live in detached inventory botprog_<key> (mirrored to mod_storage)
+    local inv = vbots2.prog_inv(bot_key)
     local PC = meta:get_int("PC")
     local PR = meta:get_int("PR")
     local invname = "p"..PR

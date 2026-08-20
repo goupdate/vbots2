@@ -113,7 +113,7 @@ forgotten copy.
 | Shot | 40 | 30 blocks, 90° cone | 6s | Snowball projectile (gravity=-22, speed=25, y-comp=+9) |
 | bug_check | — | 5 blocks | — | skip=1 if hostile found |
 | damaged_check | — | — | — | skip=1 if attacked in last 3s |
-| turn_danger | — | 20 blocks | — | turn toward attacker or nearest hostile |
+| turn_danger | — | 30 blocks (sphere, ×N multiplier) | — | turn to attacker if present else nearest hostile; no turn if no target |
 
 - Zombie HP = 20. Laser = 2-shot kill, Shot = 1-shot kill.
 - `is_hostile_entity(ent)`: checks `ent.type == "monster"` OR `ent.hostile` OR `ent._is_hostile` OR `ent._attack` OR `ent.passive == false`, then falls back to definition check.
@@ -134,6 +134,31 @@ forgotten copy.
   string and the `index -> full_storage_key` lookup. Never rebuild an unfiltered
   `mod_storage` list in the handler — its order differs and it includes other players'
   saves, so the clicked index resolves to the wrong (often another player's) save.
+
+### Inventory storage: detached inventory + mod_storage mirror
+
+Bot **programs** (lists `p0`..`p6`, 7×56 slots) MUST live in a **detached inventory**
+`botprog_<bot_key>` mirrored to `mod_storage["botprog_<bot_key>"]`. The node meta holds
+only small fields + the `key` string — the bot's "pointer" to its data. `main` (32 slots)
+stays in the node meta inventory because it changes on every step.
+
+**Why:** `position_bot` moves the node via `set_node` + `meta:to_table()/from_table()`,
+which copies the ENTIRE node metadata — copying 425 inventory slots on every step is
+wasteful. With programs detached, a move copies only ~15 small fields + `main` (32 slots):
+~10× cheaper. Additionally, mapblock saves shrink (node meta ~1KB vs tens of KB).
+
+**Rules:**
+- NEVER store program lists in node meta (`list[nodemeta:...;pN...]` is forbidden). Use
+  detached: `list[detached:botprog_<key>;pN...]`.
+- Detached inventories DIE on server restart → always (re)create from the `mod_storage`
+  mirror before use. Use the shared helpers in `init.lua` (`ensure_prog_inv` /
+  `prog_inv` / `save_prog_inv`) — they restore-from-storage idempotently.
+- `main`/`trash` handling stays as-is: `main` in node meta, `trash` in
+  `detached:bottrash`.
+- One-time lazy migration of old bots happens in `bot_restore` (reads node p-lists →
+  `mod_storage` → clears node p-lists). Saves (`inv_list` format) need NO conversion.
+- Every new site that reads/writes program slots MUST go through `prog_inv`, never
+  `minetest.get_inventory({type="node", pos=...})` for `p*` lists.
 
 ### Luanti 5.14.0 — bundled tools
 

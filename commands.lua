@@ -18,6 +18,8 @@ end
 function bot_parsecommand(pos,item)
     local meta = minetest.get_meta(pos)
     local bot_owner = meta:get_string("owner")
+    -- program slots live in detached inventory botprog_<key> (mirrored to mod_storage)
+    local prog_inv = vbots2.prog_inv(meta:get_string("key"))
     if item == "vbots2:move_forward" then
         move_bot(pos,"f")
     elseif item == "vbots2:move_backward" then
@@ -75,32 +77,32 @@ function bot_parsecommand(pos,item)
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
         local PC = meta:get_int("PC")
-        local filter = inv:get_stack("p"..PR, PC):get_name()
+        local filter = prog_inv:get_stack("p"..PR, PC):get_name()
         bot_build(pos, 0, filter)
     elseif item == "vbots2:build_behind" then
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
         local PC = meta:get_int("PC")
-        local filter = inv:get_stack("p"..PR, PC):get_name()
+        local filter = prog_inv:get_stack("p"..PR, PC):get_name()
         bot_build(pos, 0, filter, true)
     elseif item == "vbots2:mode_build_down" then
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
         local PC = meta:get_int("PC")
-        local filter = inv:get_stack("p"..PR, PC):get_name()
+        local filter = prog_inv:get_stack("p"..PR, PC):get_name()
         bot_build(pos, -1, filter)
     elseif item == "vbots2:mode_build_up" then
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
         local PC = meta:get_int("PC")
-        local filter = inv:get_stack("p"..PR, PC):get_name()
+        local filter = prog_inv:get_stack("p"..PR, PC):get_name()
         bot_build(pos, 1, filter)
     elseif item == "vbots2:eq_check" then
         local front_node = get_front_node(pos)
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
         local PC = meta:get_int("PC")
-        local expected = inv:get_stack("p"..PR, PC):get_name()
+        local expected = prog_inv:get_stack("p"..PR, PC):get_name()
         if expected == "" then expected = "air" end
         if node_matches(front_node.name, expected) then
             meta:set_int("skip", 1)
@@ -112,7 +114,7 @@ function bot_parsecommand(pos,item)
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
         local PC = meta:get_int("PC")
-        local expected = inv:get_stack("p"..PR, PC):get_name()
+        local expected = prog_inv:get_stack("p"..PR, PC):get_name()
         if expected == "" then expected = "air" end
         if not node_matches(front_node.name, expected) then
             meta:set_int("skip", 1)
@@ -128,7 +130,7 @@ function bot_parsecommand(pos,item)
                 local inv = meta:get_inventory()
                 local PR = meta:get_int("PR")
                 local PC = meta:get_int("PC")
-                local filter = inv:get_stack("p"..PR, PC):get_name()
+                local filter = prog_inv:get_stack("p"..PR, PC):get_name()
                 if filter == "" then filter = "air" end
                 local found = false
                 local chest_list = chest_inv:get_list("main")
@@ -161,7 +163,7 @@ function bot_parsecommand(pos,item)
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
         local PC = meta:get_int("PC")
-        local b_val = resolve_value(inv:get_stack("p"..PR, PC), meta)
+        local b_val = resolve_value(prog_inv:get_stack("p"..PR, PC), meta)
         local result = false
         if item == "vbots2:gt_check" then result = a_val > b_val
         elseif item == "vbots2:lt_check" then result = a_val < b_val
@@ -200,7 +202,7 @@ function bot_parsecommand(pos,item)
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
         local PC = meta:get_int("PC")
-        local var_item = inv:get_stack("p"..PR, PC):get_name()
+        local var_item = prog_inv:get_stack("p"..PR, PC):get_name()
         local var_name = var_item:match("var_(.)$")
         if not var_name then
             var_name = meta:get_string("active_var")
@@ -221,7 +223,7 @@ function bot_parsecommand(pos,item)
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
         local PC = meta:get_int("PC")
-        local var_item = inv:get_stack("p"..PR, PC):get_name()
+        local var_item = prog_inv:get_stack("p"..PR, PC):get_name()
         local var_name = var_item:match("var_(.)$")
         if not var_name then
             var_name = meta:get_string("active_var")
@@ -272,7 +274,7 @@ function bot_parsecommand(pos,item)
         local inv = meta:get_inventory()
         local PR = meta:get_int("PR")
         local PC = meta:get_int("PC")
-        local filter = inv:get_stack("p"..PR, PC):get_name()
+        local filter = prog_inv:get_stack("p"..PR, PC):get_name()
         local count = 0
         if filter ~= "" then
             local main = inv:get_list("main")
@@ -314,7 +316,7 @@ function bot_parsecommand(pos,item)
         local PC = meta:get_int("PC")
         local PR = meta:get_int("PR")
         local inv = meta:get_inventory()
-        local smeta = inv:get_stack("p"..PR, PC):get_meta()
+        local smeta = prog_inv:get_stack("p"..PR, PC):get_meta()
         local tx = smeta:get_int("pos_x")
         local ty = smeta:get_int("pos_y")
         local tz = smeta:get_int("pos_z")
@@ -362,31 +364,42 @@ function bot_parsecommand(pos,item)
         else
             meta:set_int("skip", 2)
         end
-    elseif item == "vbots2:turn_danger" then
+elseif item == "vbots2:turn_danger" then
         local now = minetest.get_gametime()
         local dt = meta:get_float("damage_time")
+        local owner = meta:get_string("owner")
+        local player = minetest.get_player_by_name(owner)
+        local radius = 30
+        -- multiplier: number item consumed as repeat sits one slot before PC
+        local mult_name = prog_inv:get_stack("p" .. meta:get_int("PR"), meta:get_int("PC") - 1):get_name()
+        local mult = mult_name:match("^vbots2:number_(%d)$")
+        if mult then
+            radius = radius * tonumber(mult)
+        end
+        local nearest = player and find_nearest_hostile(pos, radius, player, false)
+        -- recently attacked: prefer the attacker, but only if it is still present
         if dt > 0 and now - dt < 3.0 then
             local dps = meta:get_string("damage_pos")
             if dps ~= "" then
                 local ap = minetest.deserialize(dps)
-            if ap then
-                bot_face_toward(pos, ap)
+                if ap then
+                    local attacker = find_nearest_hostile(ap, 4, player, false)
+                    if attacker then
+                        bot_face_toward(pos, ap)
+                        return
+                    end
+                end
+            end
+        end
+        -- turn only when a target is actually found (no target = no turn)
+        if nearest then
+            local ep = nearest:get_pos()
+            if ep then
+                bot_face_toward(pos, ep)
                 return
             end
-            end
         end
-    -- no recent attack: find nearest hostile in 30 blocks (shot range)
-    local owner = meta:get_string("owner")
-    local player = minetest.get_player_by_name(owner)
-    local nearest = player and find_nearest_hostile(pos, 30, player, false)
-    if nearest then
-        local ep = nearest:get_pos()
-        if ep then
-            bot_face_toward(pos, ep)
-            return
-        end
-    end
-        -- no hostile nearby: sparks
+        -- no hostile nearby: sparks only, bot does NOT turn anywhere
         minetest.add_particlespawner({amount = 5, time = 0.3,
             minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
             maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
