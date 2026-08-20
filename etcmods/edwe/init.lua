@@ -6,6 +6,14 @@ edwe.player = {}
 
 dofile(minetest.get_modpath("edwe") .. "/fill.lua")
 
+-- Get mark position from a click: always use the adjacent space (above),
+-- i.e. the position touching the pointed face.
+-- Top face → space above the block, side face → space next to the block.
+-- This way: click floor top + wall side → fill = floor layer up to wall.
+function edwe_get_mark_pos(pointed_thing)
+    return pointed_thing.above
+end -- function edwe_get_mark_pos
+
 -- Left-click handler: mark first position (pos1)
 function edwe_handle_lmb(itemstack, user, pointed_thing)
     if pointed_thing.type ~= "node" then
@@ -17,7 +25,7 @@ function edwe_handle_lmb(itemstack, user, pointed_thing)
         st = {}
         edwe.player[name] = st
     end -- if st nil
-    st.pos1 = pointed_thing.under
+    st.pos1 = edwe_get_mark_pos(pointed_thing)
     minetest.chat_send_player(name, "EdWorldEdit :  first point set.")
     return itemstack
 end -- function edwe_handle_lmb
@@ -33,10 +41,10 @@ function edwe_handle_rmb(itemstack, user, pointed_thing)
         return itemstack  -- no pos1 yet, ignore RMB
     end -- if st nil
     if st.pos2 == nil then
-        st.pos2 = pointed_thing.under
+        st.pos2 = edwe_get_mark_pos(pointed_thing)
         minetest.chat_send_player(name, "EdWorldEdit: second point set. Choose item to copy.")
     else  -- if pos2
-        local fill = minetest.get_node(pointed_thing.under)
+        local fill = minetest.get_node(edwe_get_mark_pos(pointed_thing))
         local ok = edwe_fill_cuboid(name, st.pos1, st.pos2, fill)
         if ok then
             edwe.player[name] = nil

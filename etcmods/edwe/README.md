@@ -5,9 +5,11 @@ A wooden axe region-fill tool for Luanti 5.14.0+ (Minetest Game and VoxeLibre).
 ## How to use
 
 1. **Craft** a `edwe:wooden_axe` (3 wood + 2 sticks, wooden axe shape) or take it from Creative.
-2. **LMB** on a block → marks position 1.
-3. **RMB** on a block → marks position 2.
+2. **LMB** on a block → marks position 1 — the space *adjacent* to the clicked face (top face → space above, side face → space next to).
+3. **RMB** on a block → marks position 2 — same rule.
 4. **RMB** on a third block → fills the cuboid between positions 1 and 2 with that block.
+
+**Mark position rule:** clicking the *top* face marks the block **above** the clicked one (e.g. click floor → mark air above it). Clicking a *side* face marks the **adjacent** space (e.g. click wall from inside → mark the air block next to wall). This lets you naturally outline floors, walls, and ceilings. Example: click floor top + wall side → fill creates a new floor layer up to the wall.
 
 ## Fill rules
 
