@@ -32,20 +32,30 @@ end -- function edwe_handle_lmb
 
 -- Right-click handler: mark second position (pos2) or fill
 function edwe_handle_rmb(itemstack, user, pointed_thing)
+    local name = user:get_player_name()
     if pointed_thing.type ~= "node" then
+        minetest.chat_send_player(name, "DEBUG: RMB no-node type=" .. (pointed_thing.type or "nil"))
         return itemstack
     end -- if type
-    local name = user:get_player_name()
     local st = edwe.player[name]
     if st == nil then
-        return itemstack  -- no pos1 yet, ignore RMB
+        minetest.chat_send_player(name, "DEBUG: RMB ignored, no pos1 state")
+        return itemstack
     end -- if st nil
+    if st.pos1 == nil then
+        minetest.chat_send_player(name, "DEBUG: RMB ignored, pos1=nil (should not happen)")
+        return itemstack
+    end -- if pos1 nil
     if st.pos2 == nil then
         st.pos2 = edwe_get_mark_pos(pointed_thing)
         minetest.chat_send_player(name, "EdWorldEdit: second point set. Choose item to copy.")
     else  -- if pos2
-        local fill = minetest.get_node(edwe_get_mark_pos(pointed_thing))
+        -- Third click: use the clicked block (under) as fill material,
+        -- NOT above — we want WHAT the user clicked, not the adjacent air.
+        local fill = minetest.get_node(pointed_thing.under)
+        minetest.chat_send_player(name, "DEBUG: fill node=" .. fill.name .. " pos1=" .. minetest.pos_to_string(st.pos1) .. " pos2=" .. minetest.pos_to_string(st.pos2))
         local ok = edwe_fill_cuboid(name, st.pos1, st.pos2, fill)
+        minetest.chat_send_player(name, "DEBUG: fill_cuboid returned " .. tostring(ok))
         if ok then
             edwe.player[name] = nil
             minetest.chat_send_player(name, "EdWorldEdit : copy done")
