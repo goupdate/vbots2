@@ -344,9 +344,15 @@ function bot_parsecommand(pos,item)
             end -- for dy
         end -- if air
     elseif item == "vbots2:laser" then
-        bot_shoot(pos, meta, {radius=10, damage=10, cooldown_key="laser_last", cooldown_time=4, log_prefix="LASER", is_shot=false})
+        local dmg = meta:get_float("laser_damage")
+        if dmg <= 0 then dmg = 1.0 end
+        local _, laser_range, _, _ = vbots2.compute_bot_stats(meta)
+        bot_shoot(pos, meta, {radius=laser_range, damage=dmg, cooldown_key="laser_last", cooldown_time=4, log_prefix="LASER", is_shot=false})
     elseif item == "vbots2:shot" then
-        bot_shoot(pos, meta, {radius=30, damage=40, cooldown_key="shot_last", cooldown_time=6, log_prefix="SHOT", is_shot=true})
+        local dmg = meta:get_float("shot_damage")
+        if dmg <= 0 then dmg = 1.0 end
+        local _, _, shot_range, _ = vbots2.compute_bot_stats(meta)
+        bot_shoot(pos, meta, {radius=shot_range, damage=dmg, cooldown_key="shot_last", cooldown_time=6, log_prefix="SHOT", is_shot=true})
     elseif item == "vbots2:damaged_check" then
         local now = minetest.get_gametime()
         local dt = meta:get_float("damage_time")
@@ -358,7 +364,8 @@ function bot_parsecommand(pos,item)
     elseif item == "vbots2:bug_check" then
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)
-        local nearest = player and find_nearest_hostile(pos, 5, player, false)
+        local _, _, _, danger_range = vbots2.compute_bot_stats(meta)
+        local nearest = player and find_nearest_hostile(pos, danger_range, player, false)
         if nearest then
             meta:set_int("skip", 1)
         else
@@ -369,7 +376,8 @@ elseif item == "vbots2:turn_danger" then
         local dt = meta:get_float("damage_time")
         local owner = meta:get_string("owner")
         local player = minetest.get_player_by_name(owner)
-        local radius = 30
+        local _, _, _, danger_range = vbots2.compute_bot_stats(meta)
+        local radius = danger_range
         -- combined multiplier of all consecutive numbers/vars after command
         local mult = meta:get_int("repeat_mult")
         if mult > 1 then
@@ -418,6 +426,10 @@ elseif item == "vbots2:turn_danger" then
                 ndef.on_rightclick(front_pos, front_node, player)
             end
         end
+    elseif item == "vbots2:p2p_on" then
+        meta:set_int("pvp", 1)
+    elseif item == "vbots2:p2p_off" then
+        meta:set_int("pvp", 0)
     end
     local fnum = item:match("^vbots2:f(%d)$")
     if fnum then

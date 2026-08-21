@@ -1,22 +1,24 @@
 # AGENTS.md — edwe (EdWorldEdit)
 
 Мод-аналог WorldEdit для Luanti 5.14.0+ (работает и на Minetest Game, и на VoxeLibre/MCL).
-Деревянный топорик `edwe:wooden_axe` отмечает две позиции (ЛКМ / ПКМ), третий ПКМ-клик по
-блоку выбирает блок-«заливку» и заполняет кубоид между отмеченными позициями.
-Работает и в креативе, и в обычной (survival) игре.
+Два инструмента:
+- **Fill Axe** `edwe:wooden_axe` — отмечает две позиции, третий ПКМ → заполняет кубоид выбранным блоком.
+- **Delete Axe** `edwe:wooden_axe_delete` — (перевёрнутая текстура) отмечает две позиции, третий ПКМ → удаляет всё в кубоиде (ставит air).
+Общая механика: ЛКМ → pos1, ПКМ → pos2, ПКМ → действие. Работает и в креативе, и в survival.
 
 ## Полное ТЗ
 
-### Инструмент
+### Инструменты
 
-- `edwe:wooden_axe` — деревянный топорик, **не копает блоки** (нет `tool_capabilities`).
-- Текстура: `textures/edwe_wooden_axe.png` (копия деревянного топора VoxeLibre).
-- Получение: крафт (3 `group:wood` + 2 `group:stick`, форма деревянного топора) + вкладка Creative.
+- `edwe:wooden_axe` — Fill Axe, **не копает блоки** (нет `tool_capabilities`).
+  Текстура: `textures/edwe_wooden_axe.png` (копия деревянного топора VoxeLibre). Крафт: 3 wood + 2 stick + Creative.
+- `edwe:wooden_axe_delete` — Delete Axe, тоже не копает.
+  Текстура: `textures/edwe_wooden_axe_delete.png` (та же текстура, повёрнута на 180°). Крафт: тот же рецепт + Creative.
 
 ### Механика отметок (конечный автомат, состояние per-player)
 
-`edwe.player[name] = { pos1 = vector, pos2 = vector }` — фаза выводится из полей:
-нет `pos1` → фаза 0; есть `pos1`, нет `pos2` → фаза 1; есть оба → фаза 2 (готово к заливке).
+`edwe.player[name]` (Fill) и `edwe.player_del[name]` (Delete) — раздельные таблицы, формат `{ pos1 = vector, pos2 = vector }`.
+Фаза выводится из полей: нет `pos1` → фаза 0; есть `pos1`, нет `pos2` → фаза 1; есть оба → фаза 2 (готово к действию).
 
 **Правило выбора позиции по клику:** позиция всегда берётся из `pointed_thing.above` —
 это координата, прилегающая к указанной грани блока. Клик по верхней грани → позиция
@@ -29,8 +31,10 @@
 | 1 | ЛКМ по блоку | pos1 не задан | `pos1 = блок`, фаза 1 | `EdWorldEdit :  first point set.` (ДВА пробела после `:`) |
 | 2 | ЛКМ по блоку | pos1 задан | pos1 переотмечается | `EdWorldEdit :  first point set.` |
 | 3 | ПКМ по блоку | pos1 не задан | игнор, ничего не происходит | — |
-| 4 | ПКМ по блоку | pos1 задан, pos2 не задан | `pos2 = блок`, фаза 2 | `EdWorldEdit: second point set. Choose item to copy.` (БЕЗ пробела после `:`) |
-| 5 | ПКМ по блоку | pos1 и pos2 заданы | **заливка** блоком, на который кликнули, затем сброс | `EdWorldEdit : copy done` |
+| 4a | ПКМ (Fill) | pos1 задан, pos2 не задан | `pos2 = блок`, фаза 2 | `EdWorldEdit: second point set. Choose item to copy.` (БЕЗ пробела после `:`) |
+| 4b | ПКМ (Delete) | pos1 задан, pos2 не задан | `pos2 = блок`, фаза 2 | `EdWorldEdit: second point set. Delete region.` |
+| 5a | ПКМ (Fill) | pos1 и pos2 заданы | **заливка** блоком под кликом, затем сброс | `EdWorldEdit : copy done` |
+| 5b | ПКМ (Delete) | pos1 и pos2 заданы | **удаление** всего в кубоиде (→ air), затем сброс | `EdWorldEdit : delete done` |
 | 6 | смена предмета в руке | состояние активно | сброс состояния | `EdWorldEdit : cancel` |
 
 **ВНИМАНИЕ:** строки сообщений скопированы дословно из ТЗ заказчика, включая
@@ -53,19 +57,38 @@
 | `ignore` (незагруженный чанк) | пропускается |
 | защищённая нода (`minetest.is_protected`) | пропускается |
 
-- Заливка бесплатная (не расходует блоки из инвентаря) в обоих режимах игры.
+- Заливка: creative — бесплатно; survival — расход блоков из инвентаря; fill=air — всегда бесплатно.
 - `param2` исходной ноды копируется через `bulk_set_node(list, fill)` (fill = таблица ноды от `get_node`).
 - Лимит: `edwe.max_nodes` (settingtypes.txt, по умолчанию 10000).
+
+### Удаление (событие 5b, Delete Axe)
+
+- Кубоид между `pos1` и `pos2`, включая обе позиции.
+- Правило: ВСЁ → `air`, кроме `air`, `ignore` и protected-нод.
+- Всегда бесплатно (creative и survival), блоки НЕ возвращаются в инвентарь.
+- `bulk_set_node(list, {name = "air"})` — единый вызов для всех позиций.
+
+## Архитектура (shared helpers, без копипасты)
+
+Оба инструмента используют общие хелперы в `init.lua`:
+- `edwe_mark_first(itemstack, user, pt, state_tab)` — ЛКМ: отметка pos1.
+- `edwe_mark_second_or_act(itemstack, user, pt, state_tab, action_fn, msg2)` — ПКМ: pos2 или вызов action_fn.
+- `edwe_action_fill(name, pos1, pos2, pt)` — fill-action: get_node(pt.under) + edwe_fill_cuboid.
+- `edwe_action_delete(name, pos1, pos2, pt)` — delete-action: edwe_delete_cuboid.
+- `edwe_check_tool(name, state_tab, tool_name)` — проверка смены инструмента в globalstep.
+
+Регистрация инструментов — тонкие обёртки (2 строки на хендлер), без дублирования логики.
 
 ## Структура мода
 
 ```
 edwe/
   mod.conf            -- name = edwe (БЕЗ depends; совместимость через group:wood/group:stick и паттерны имён)
-  init.lua            -- edwe = {}; edwe.max_nodes; register_tool; edwe_handle_lmb/rmb; globalstep; on_leaveplayer; крафт
-  fill.lua            -- edwe_is_water() / edwe_is_grass() / edwe_fill_cuboid()
+  init.lua            -- edwe={}; state tables; shared helpers; action functions; tool registration; crafts; globalstep; leaveplayer
+  fill.lua            -- edwe_is_water(); edwe_is_grass(); edwe_fill_cuboid(); edwe_delete_cuboid()
   settingtypes.txt    -- edwe.max_nodes
   textures/edwe_wooden_axe.png
+  textures/edwe_wooden_axe_delete.png
   license.txt         -- MIT
   README.md
 ```
@@ -92,8 +115,10 @@ edwe/
 
 ### Стиль кода: централизация и глобальные функции
 
-- Кросс-файловые функции/переменные (`edwe`, `edwe_handle_lmb`, `edwe_handle_rmb`,
-  `edwe_is_water`, `edwe_is_grass`, `edwe_fill_cuboid`) — ТОЛЬКО глобальные (без `local`).
+- Кросс-файловые функции/переменные (`edwe`, `edwe.player`, `edwe.player_del`,
+  `edwe_is_water`, `edwe_is_grass`, `edwe_fill_cuboid`, `edwe_delete_cuboid`,
+  `edwe_mark_first`, `edwe_mark_second_or_act`) — ТОЛЬКО глобальные (без `local`).
+- Обработчики-обёртки (`edwe_lmb_fill`, `edwe_rmb_fill`, `edwe_lmb_del`, `edwe_rmb_del`) — тоже глобальные.
 - `edwe.max_nodes` выставляется в init.lua сразу после `edwe = {}`.
 
 ## Нюансы движка (проверено)
@@ -123,10 +148,15 @@ edwe/
 - [ ] ПКМ до ЛКМ — ничего не происходит
 - [ ] ЛКМ/ПКМ по существу или воздуху — ничего не происходит
 - [ ] Топорик не копает блоки, не открывает сундуки/печи
-- [ ] Работает и в креативе, и в survival
-- [ ] Защищённая территория не заливается
-- [ ] Регион больше `edwe.max_nodes` → отказ с сообщением, состояние сохраняется
-- [ ] Выход игрока с активным состоянием — состояние очищается
+- [ ] Fill + Delete: работают и в креативе, и в survival
+- [ ] Fill + Delete: защищённая территория не трогается
+- [ ] Fill + Delete: регион больше `edwe.max_nodes` → отказ с сообщением, состояние сохраняется
+- [ ] Fill + Delete: выход игрока с активным состоянием → состояние очищается
+- [ ] Delete Axe: ПКМ по второму блоку → `EdWorldEdit: second point set. Delete region.`
+- [ ] Delete Axe: третий ПКМ → кубоид очищен (всё → air), `EdWorldEdit : delete done`, состояние сброшено
+- [ ] Delete Axe: air и ignore в кубоиде не трогаются (не отправляются в bulk_set_node)
+- [ ] Delete Axe: смена с Delete Axe на Fill Axe → cancel для delete-состояния (раздельные таблицы)
+- [ ] Оба инструмента: одновременное использование (Fill pos1 + Delete pos1) не конфликтуют (раздельные `edwe.player` / `edwe.player_del`)
 
 ## Проверка в игре (headless)
 

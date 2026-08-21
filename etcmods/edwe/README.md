@@ -1,17 +1,28 @@
 # EdWorldEdit (edwe)
 
-A wooden axe region-fill tool for Luanti 5.14.0+ (Minetest Game and VoxeLibre).
+Two wooden axe tools for Luanti 5.14.0+ (Minetest Game and VoxeLibre):
+- **Fill Axe** — fills a cuboid with a chosen block.
+- **Delete Axe** (inverted texture) — clears a cuboid, setting all non-air non-protected nodes to air.
 
 ## How to use
 
+### Fill Axe (`edwe:wooden_axe`)
+
 1. **Craft** a `edwe:wooden_axe` (3 wood + 2 sticks, wooden axe shape) or take it from Creative.
-2. **LMB** on a block → marks position 1 — the space *adjacent* to the clicked face (top face → space above, side face → space next to).
+2. **LMB** on a block → marks position 1 — the space *adjacent* to the clicked face (top face → space above, side face → space next).
 3. **RMB** on a block → marks position 2 — same rule.
 4. **RMB** on a third block → fills the cuboid between positions 1 and 2 with that block.
 
-**Mark position rule:** clicking the *top* face marks the block **above** the clicked one (e.g. click floor → mark air above it). Clicking a *side* face marks the **adjacent** space (e.g. click wall from inside → mark the air block next to wall). This lets you naturally outline floors, walls, and ceilings. Example: click floor top + wall side → fill creates a new floor layer up to the wall.
+### Delete Axe (`edwe:wooden_axe_delete`)
 
-## Fill rules
+1. **Craft** a `edwe:wooden_axe_delete` (same recipe) or take it from Creative.
+2. **LMB** on a block → marks position 1 (same marking rule: adjacent space).
+3. **RMB** on a block → marks position 2.
+4. **RMB** a third time → clears the cuboid: all non-air, non-ignore, non-protected nodes are set to `air`. Always free (no blocks returned), works in both creative and survival.
+
+**Mark position rule:** clicking the *top* face marks the block **above** the clicked one (e.g. click floor → mark air above it). Clicking a *side* face marks the **adjacent** space (e.g. click wall from inside → mark the air block next to wall).
+
+## Fill rules (Fill Axe)
 
 | Node | Action |
 |---|---|
@@ -22,35 +33,53 @@ A wooden axe region-fill tool for Luanti 5.14.0+ (Minetest Game and VoxeLibre).
 | `ignore` (unloaded chunk) | skipped |
 | Protected nodes (`areas` / protection mod) | skipped |
 
+## Delete rules (Delete Axe)
+
+| Node | Action |
+|---|---|
+| Any non-air, non-ignore, non-protected node | set to `air` |
+| `air` | skipped |
+| `ignore` (unloaded chunk) | skipped |
+| Protected nodes | skipped |
+
 ### Block consumption
 
-| Mode | Behavior |
-|---|---|
-| Creative | Free — no blocks consumed from inventory |
-| Survival | Blocks taken from player's main inventory (1 per filled position) |
-| Fill with `air` | Always free (clearing doesn't consume items) |
+| Mode | Fill Axe | Delete Axe |
+|---|---|---|
+| Creative | Free | Free |
+| Survival | Blocks taken from inventory (1 per position) | Free |
+| Fill/Del with `air` | Free | N/A |
 
 ## Chat messages (literal)
 
-| Event | Message |
-|---|---|
-| First point marked | `EdWorldEdit :  first point set.` |
-| Second point marked | `EdWorldEdit: second point set. Choose item to copy.` |
-| Fill done | `EdWorldEdit : copy done` |
-| Tool changed | `EdWorldEdit : cancel` |
-| Region too big | `EdWorldEdit : region too big (N nodes, max M)` |
-| Not enough blocks | `EdWorldEdit : not enough <nodename> (need N)` |
-| No inventory access | `EdWorldEdit : cannot access inventory` |
+| Event | Fill Axe | Delete Axe |
+|---|---|---|
+| First point | `EdWorldEdit :  first point set.` | `EdWorldEdit :  first point set.` |
+| Second point | `EdWorldEdit: second point set. Choose item to copy.` | `EdWorldEdit: second point set. Delete region.` |
+| Done | `EdWorldEdit : copy done` | `EdWorldEdit : delete done` |
+| Tool changed | `EdWorldEdit : cancel` | `EdWorldEdit : cancel` |
+| Region too big | `EdWorldEdit : region too big (N nodes, max M)` | `EdWorldEdit : region too big (N nodes, max M)` |
+| Not enough blocks | `EdWorldEdit : not enough <nodename> (need N)` | — |
+| No inventory | `EdWorldEdit : cannot access inventory` | — |
 
 ## Settings
 
-- `edwe.max_nodes` — maximum nodes per fill (default: 10000). Set in `All Settings` or `settingtypes.txt`.
+- `edwe.max_nodes` — maximum nodes per operation (default: 10000). Set in `All Settings` or `settingtypes.txt`.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `init.lua` | Shared state-machine helpers, tool registration, crafts, globalstep, leaveplayer |
+| `fill.lua` | `edwe_fill_cuboid()`, `edwe_delete_cuboid()`, `edwe_is_water()`, `edwe_is_grass()` |
+| `textures/edwe_wooden_axe.png` | Fill axe texture (standard wooden axe) |
+| `textures/edwe_wooden_axe_delete.png` | Delete axe texture (inverted 180°) |
 
 ## Compatibility
 
 - Minetest Game (MTG)
 - VoxeLibre / MineClone 2 (MCL)
-- Uses `group:wood` / `group:stick` for crafting and `"water"`/`"grass"` name patterns for fill rules — works across both game systems.
+- Uses `group:wood` / `group:stick` for crafting and `"water"`/`"grass"` name patterns — works across both game systems.
 
 ## License
 

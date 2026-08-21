@@ -1,4 +1,4 @@
--- edwe/fill.lua -- cuboid fill helpers
+-- edwe/fill.lua -- cuboid fill and delete helpers
 
 -- Local references for CPU/memory optimization (avoid global table lookups in hot loops)
 local minetest_get_node = minetest.get_node
@@ -76,3 +76,43 @@ function edwe_fill_cuboid(player_name, pos1, pos2, fill)
     minetest_bulk_set_node(list, fill)
     return true
 end -- function edwe_fill_cuboid
+
+-- Delete all nodes in cuboid: set to air.
+-- Skips air, ignore, and protected nodes. Always free (no block return to inventory).
+function edwe_delete_cuboid(player_name, pos1, pos2)
+    local minp = {
+        x = math.min(pos1.x, pos2.x),
+        y = math.min(pos1.y, pos2.y),
+        z = math.min(pos1.z, pos2.z),
+    }
+    local maxp = {
+        x = math.max(pos1.x, pos2.x),
+        y = math.max(pos1.y, pos2.y),
+        z = math.max(pos1.z, pos2.z),
+    }
+    local count = (maxp.x - minp.x + 1) * (maxp.y - minp.y + 1) * (maxp.z - minp.z + 1)
+    if count > edwe.max_nodes then
+        minetest_chat_send(player_name,
+            "EdWorldEdit : region too big (" .. count .. " nodes, max " .. edwe.max_nodes .. ")")
+        return false
+    end -- if count > max
+    local list = {}
+    for x = minp.x, maxp.x do
+        for y = minp.y, maxp.y do
+            for z = minp.z, maxp.z do
+                local p = {x = x, y = y, z = z}
+                local node = minetest_get_node(p)
+                if node.name ~= "air"
+                and node.name ~= "ignore"
+                and not minetest_is_protected(p, player_name) then
+                    table_insert(list, p)
+                end -- if deletable
+            end -- loop over z
+        end -- loop over y
+    end -- loop over x
+    if #list == 0 then
+        return true
+    end -- if list empty
+    minetest_bulk_set_node(list, {name = "air"})
+    return true
+end -- function edwe_delete_cuboid

@@ -65,7 +65,7 @@ function bot_shoot(pos, meta, cfg)
     local nearest = find_nearest_hostile(pos, cfg.radius, player, true)
     vbots2.log(meta:get_string("name"), P .. " SCAN radius=" .. cfg.radius)
     if not nearest then
-        vbots2.log(meta:get_string("name"), P .. " NO TARGET")
+        vbots2.log(meta:get_string("name"), P .. " miss")
         minetest.add_particlespawner({amount = 5, time = 0.3,
             minpos = {x = pos.x - 0.2, y = pos.y + 0.4, z = pos.z - 0.2},
             maxpos = {x = pos.x + 0.2, y = pos.y + 0.8, z = pos.z + 0.2},
@@ -97,7 +97,7 @@ function bot_shoot(pos, meta, cfg)
         end
     end
     if blocked then
-        vbots2.log(meta:get_string("name"), P .. " BLOCKED by wall")
+        vbots2.log(meta:get_string("name"), P .. " miss")
         local bp = vector.add(eye, vector.multiply(beam_vec, 0.5))
         for i = 1, 6 do
             minetest.add_particle({pos = bp, velocity = {x=math.random()-0.5, y=math.random()*2+1, z=math.random()-0.5},
@@ -122,6 +122,7 @@ function bot_shoot(pos, meta, cfg)
             if tent then tent._damage = cfg.damage; tent._shooter = player
                 tent._pvp = meta:get_int("pvp") == 1
                 tent._owner_name = meta:get_string("owner")
+                tent._bot_pos = pos        -- for kill detection in on_step
             end
             minetest.sound_play("mcl_bows_bow_shoot", {pos = pos, max_hear_distance = 16})
         else
@@ -144,17 +145,50 @@ function bot_shoot(pos, meta, cfg)
                 texture = "vbots_laser_spark.png", glow = 10})
         end
         local ent = nearest:get_luaentity()
+        local bot_name = meta:get_string("name")
+        local ld = meta:get_float("laser_damage")
+        local sd = meta:get_float("shot_damage")
+        local mh = meta:get_float("max_hp")
         if nearest:is_player() then
             -- P2P: damage player target directly
             local hp_before = nearest:get_hp()
             local hp_after = math.max(0, hp_before - cfg.damage)
             nearest:set_hp(hp_after)
-            vbots2.log(meta:get_string("name"), string.format(P .. " DMG player=%s aim=%.1f,%.1f,%.1f hp:%d→%d", nearest:get_player_name(), aim_pos.x, aim_pos.y, aim_pos.z, hp_before, hp_after))
+            local tname = nearest:get_player_name()
+            vbots2.log(bot_name, string.format("LASER hit %s dmg=%.1f left=%d ★%.2f ❄%.2f ♥%.2f", tname, cfg.damage, hp_after, ld, sd, mh))
+            if hp_after == 0 and hp_before > 0 then
+                update_bot_kill_stats(meta, pos, true, "player")        -- laser kill
+                local nld = meta:get_float("laser_damage")
+                local nmh = meta:get_float("max_hp")
+                local upd = ""
+                if nld ~= ld then upd = upd .. string.format("★%.2f→%.2f", ld, nld) end
+                if nmh ~= mh then upd = upd .. (upd ~= "" and " " or "") .. string.format("♥%.2f→%.2f", mh, nmh) end
+                vbots2.log(bot_name, "LASER kill " .. tname .. " upd " .. upd)
+            end                                                         -- if killed
         elseif ent and ent.object then
             local hp_before = ent.object:get_hp()
             local hp_after = math.max(0, hp_before - cfg.damage)
             ent.object:set_hp(hp_after)
-            vbots2.log(meta:get_string("name"), string.format(P .. " DMG %s aim=%.1f,%.1f,%.1f hp:%d→%d", tostring(ent.name), aim_pos.x, aim_pos.y, aim_pos.z, hp_before, hp_after))
+            local target_pos = nearest:get_pos()
+            if target_pos then
+                local lost = hp_before - hp_after
+                if lost <= 0 then
+                    bot_show_damage_number(target_pos, "-0")
+                else
+                    bot_show_damage_number(target_pos, "-" .. string.format("%.1f", lost))
+                end                                                         -- if lost > 0
+            end                                                             -- if target_pos
+            local tname = tostring(ent.name)
+            vbots2.log(bot_name, string.format("LASER hit %s dmg=%.1f left=%d ★%.2f ❄%.2f ♥%.2f", tname, cfg.damage, hp_after, ld, sd, mh))
+            if hp_after == 0 and hp_before > 0 then
+                update_bot_kill_stats(meta, pos, true, tname)          -- laser kill
+                local nld = meta:get_float("laser_damage")
+                local nmh = meta:get_float("max_hp")
+                local upd = ""
+                if nld ~= ld then upd = upd .. string.format("★%.2f→%.2f", ld, nld) end
+                if nmh ~= mh then upd = upd .. (upd ~= "" and " " or "") .. string.format("♥%.2f→%.2f", mh, nmh) end
+                vbots2.log(bot_name, "LASER kill " .. tname .. " upd " .. upd)
+            end                                                         -- if killed
         end
     end
 end
@@ -304,3 +338,128 @@ function is_hostile_entity(ent)
     vbots2.log("HOSTILE", "false for " .. tostring(ent.name) .. " type=" .. tostring(ent.type) .. " hostile=" .. tostring(ent.hostile) .. " def=" .. tostring(def ~= nil) .. " def.type=" .. tostring(def and def.type))
     return false
 end
+
+-------------------------------------
+-- Show floating damage number above an entity position (RPG-style).
+-- New numbers appear above old ones (Y-offset stacks), fade after 1s.
+-------------------------------------
+local _dmg_stack = {} -- Y-offset per position-key (x..","..z)
+function bot_show_damage_number(near_pos, text)
+    local key = math.floor(near_pos.x + 0.5) .. "," .. math.floor(near_pos.z + 0.5)
+    _dmg_stack[key] = (_dmg_stack[key] or 0) + 0.25
+    if _dmg_stack[key] > 3.0 then _dmg_stack[key] = 0.25 end
+    local y_off = _dmg_stack[key]
+    local spawn_y = near_pos.y + 2.0 + y_off
+    local obj = minetest.add_entity({x=near_pos.x, y=spawn_y, z=near_pos.z}, "vbots2:damage_text")
+    if obj then
+        obj:set_properties({nametag = text, nametag_color = "#FF3333"})
+    end                                                                 -- if obj spawned
+end                                                                     -- function bot_show_damage_number
+
+-------------------------------------
+-- Update bot kill stats: level-based progression with victim-dependent growth.
+--  Level = floor(sqrt(total_kills)) + 1
+--  Growth rates:  player=1.0,  creeper=0.4,  spider=0.3,  skeleton=0.25,  default=0.15
+--  Stats from level:
+--    laser = min(36, 3 + (lv-1)*1.5)
+--    shot  = min(21, 2 + (lv-1)*0.9)
+--    HP    = min(27, 10 + (lv-1)*0.8)   -- bot_body uses floor of this value
+--    armor = min(5, floor((lv-1)/4))
+--  victim_name: "player" for player kills, or entity name (e.g. "mobs_mc:creeper")
+--  is_laser: true for laser kill, false for shot kill (increments specific counter + log)
+-------------------------------------
+function update_bot_kill_stats(meta, bot_pos, is_laser, victim_name)
+    -- determine growth rate from victim type
+    local rate = 0.15                                              -- default: zombie, misc
+    if victim_name == "player" then
+        rate = 1.0
+    elseif victim_name then
+        if victim_name:find("creeper") then rate = 0.4
+        elseif victim_name:find("spider") then rate = 0.3
+        elseif victim_name:find("skeleton") then rate = 0.25
+        end                                                        -- if creeper/spider/skeleton
+    end                                                            -- if victim_name not player
+
+    local kills = (meta:get_float("total_kills") or 0) + rate
+    meta:set_float("total_kills", kills)
+
+    local level = math.floor(math.sqrt(kills + 0.01)) + 1
+    if level < 1 then level = 1 end                                -- if level underflow
+
+    -- recalculate all stats from level (deterministic, not incremental)
+    local laser_dmg = math.min(36, 3 + (level - 1) * 1.5)
+    local shot_dmg  = math.min(21, 2 + (level - 1) * 0.9)
+    local max_hp    = math.min(27, 10 + (level - 1) * 0.8)
+    local armor     = math.min(5, math.floor((level - 1) / 4))
+
+    meta:set_float("laser_damage", laser_dmg)
+    meta:set_float("shot_damage", shot_dmg)
+    meta:set_float("max_hp", max_hp)
+    meta:set_int("armor", armor)
+
+    -- increment specific kill counter (for log display)
+    local kill_field = is_laser and "laser_kills" or "shot_kills" -- which kill counter
+    meta:set_int(kill_field, (meta:get_int(kill_field) or 0) + 1)
+
+    -- Update bot_body entity HP in the world (use floor for integer HP)
+    local bot_key = meta:get_string("key")
+    for _, obj in ipairs(minetest.get_objects_inside_radius(bot_pos, 0.5)) do
+        local ent = obj:get_luaentity()
+        if ent and ent.name == "vbots2:bot_body" and ent._key == bot_key then
+            obj:set_hp(math.floor(max_hp))
+            -- update label entity above bot after stat change
+            vbots2.update_bot_label(bot_pos)
+            break
+        end -- if bot_body match
+    end -- loop over objects at bot_pos
+end -- function update_bot_kill_stats
+
+-------------------------------------
+-- Derive level-based combat ranges from kill stats.
+-- Laser: 3 + 0.5/level (min 3); Shot: 5 + 0.5/level (min 5);
+-- Danger detection: max(shot_range, 10).
+--------------------------------------
+function vbots2.compute_bot_stats(meta)
+    local kills = meta:get_float("total_kills") or 0
+    local level = math.floor(math.sqrt(kills + 0.01)) + 1
+    local laser_range = 3 + 0.5 * (level - 1)
+    local shot_range = 5 + 1.0 * (level - 1)
+    local danger_range = math.max(shot_range, 10)
+    return level, laser_range, shot_range, danger_range
+end -- function vbots2.compute_bot_stats
+
+-------------------------------------
+-- Bot label visibility: show only to owner, within 5 blocks radius.
+-- Runs every 0.5s to keep overhead minimal.
+--------------------------------------
+local label_timer = 0
+minetest.register_globalstep(function(dtime)
+    label_timer = label_timer + dtime
+    if label_timer < 0.5 then return end; label_timer = 0
+    if not vbots2._bot_labels then return end
+    for key, obj in pairs(vbots2._bot_labels) do
+        if not obj or not obj:get_pos() then
+            vbots2._bot_labels[key] = nil                    -- dead entity
+        else
+            local pos = obj:get_pos()
+            local ent = obj:get_luaentity()
+            if ent then
+                local owner = ent._owner
+                local visible = false
+                if owner then
+                    for _, player in ipairs(minetest.get_connected_players()) do
+                        local pname = player:get_player_name()
+                        if pname == owner and vector.distance(player:get_pos(), pos) <= 5 then
+                            visible = true; break
+                        end                                                 -- if owner nearby
+                    end                                                     -- loop over players
+                end                                                         -- if owner set
+                if visible then
+                    obj:set_properties({nametag = ent._tag})
+                else
+                    obj:set_properties({nametag = ""})
+                end                                                         -- if visible
+            end                                                             -- if ent exists
+        end                                                             -- if obj alive
+    end                                                                 -- loop over labels
+end)                                                                    -- globalstep

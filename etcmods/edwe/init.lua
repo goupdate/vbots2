@@ -1,71 +1,127 @@
--- edwe/init.lua -- EdWorldEdit wooden axe region fill tool
+-- edwe/init.lua -- EdWorldEdit: fill axe + delete axe, shared state-machine helpers
+-- Less copy-paste: one mark_first, one mark_second_or_act, per-tool action functions.
 
 edwe = {}
 edwe.max_nodes = tonumber(minetest.settings:get("edwe.max_nodes")) or 10000
-edwe.player = {}
+edwe.player = {}       -- fill tool state: {pos1 = vector, pos2 = vector}
+edwe.player_del = {}   -- delete tool state: {pos1 = vector, pos2 = vector}
 
 dofile(minetest.get_modpath("edwe") .. "/fill.lua")
+
+-- ── helpers ──────────────────────────────────────────────────────────────────
 
 -- Get mark position from a click: always use the adjacent space (above),
 -- i.e. the position touching the pointed face.
 -- Top face → space above the block, side face → space next to the block.
--- This way: click floor top + wall side → fill = floor layer up to wall.
 function edwe_get_mark_pos(pointed_thing)
     return pointed_thing.above
 end -- function edwe_get_mark_pos
 
--- Left-click handler: mark first position (pos1)
-function edwe_handle_lmb(itemstack, user, pointed_thing)
+-- Shared LMB: mark pos1. state_tab is edwe.player or edwe.player_del.
+function edwe_mark_first(itemstack, user, pointed_thing, state_tab)
     if pointed_thing.type ~= "node" then
         return itemstack
     end -- if type
     local name = user:get_player_name()
-    local st = edwe.player[name]
+    local st = state_tab[name]
     if st == nil then
         st = {}
-        edwe.player[name] = st
+        state_tab[name] = st
     end -- if st nil
     st.pos1 = edwe_get_mark_pos(pointed_thing)
     minetest.chat_send_player(name, "EdWorldEdit :  first point set.")
     return itemstack
-end -- function edwe_handle_lmb
+end -- function edwe_mark_first
 
--- Right-click handler: mark second position (pos2) or fill
-function edwe_handle_rmb(itemstack, user, pointed_thing)
+-- Shared RMB: mark pos2 or execute action.
+--   msg2         — chat message when pos2 is set
+--   action_fn    — called on 3rd click: fn(name, pos1, pos2, pointed_thing) → bool ok
+function edwe_mark_second_or_act(itemstack, user, pointed_thing,
+                                 state_tab, action_fn, msg2)
     if pointed_thing.type ~= "node" then
         return itemstack
     end -- if type
     local name = user:get_player_name()
-    local st = edwe.player[name]
+    local st = state_tab[name]
     if st == nil then
         return itemstack  -- no pos1 yet, ignore RMB
     end -- if st nil
     if st.pos2 == nil then
         st.pos2 = edwe_get_mark_pos(pointed_thing)
-        minetest.chat_send_player(name, "EdWorldEdit: second point set. Choose item to copy.")
-    else  -- if pos2
-        -- Third click: use the clicked block (under) as fill material,
-        -- NOT above — we want WHAT the user clicked, not the adjacent air.
-        local fill = minetest.get_node(pointed_thing.under)
-        local ok = edwe_fill_cuboid(name, st.pos1, st.pos2, fill)
+        minetest.chat_send_player(name, msg2)
+    else  -- if pos2 nil
+        local ok = action_fn(name, st.pos1, st.pos2, pointed_thing)
         if ok then
-            edwe.player[name] = nil
-            minetest.chat_send_player(name, "EdWorldEdit : copy done")
+            state_tab[name] = nil
         end -- if ok
-    end -- if pos2
+    end -- if pos2 nil
     return itemstack
-end -- function edwe_handle_rmb
+end -- function edwe_mark_second_or_act
 
--- Register the tool (no tool_capabilities: axe never digs)
+-- ── action functions ─────────────────────────────────────────────────────────
+
+-- Fill: use the clicked block (under) as material, call fill_cuboid.
+function edwe_action_fill(name, pos1, pos2, pointed_thing)
+    local fill = minetest.get_node(pointed_thing.under)
+    local ok = edwe_fill_cuboid(name, pos1, pos2, fill)
+    if ok then
+        minetest.chat_send_player(name, "EdWorldEdit : copy done")
+    end -- if ok
+    return ok
+end -- function edwe_action_fill
+
+-- Delete: remove all fillable nodes in cuboid, set to air.
+function edwe_action_delete(name, pos1, pos2, pointed_thing)
+    local ok = edwe_delete_cuboid(name, pos1, pos2)
+    if ok then
+        minetest.chat_send_player(name, "EdWorldEdit : delete done")
+    end -- if ok
+    return ok
+end -- function edwe_action_delete
+
+-- ── thin tool wrappers ───────────────────────────────────────────────────────
+
+function edwe_lmb_fill(itemstack, user, pointed_thing)
+    return edwe_mark_first(itemstack, user, pointed_thing, edwe.player)
+end -- function edwe_lmb_fill
+
+function edwe_rmb_fill(itemstack, user, pointed_thing)
+    return edwe_mark_second_or_act(itemstack, user, pointed_thing,
+        edwe.player, edwe_action_fill,
+        "EdWorldEdit: second point set. Choose item to copy.")
+end -- function edwe_rmb_fill
+
+function edwe_lmb_del(itemstack, user, pointed_thing)
+    return edwe_mark_first(itemstack, user, pointed_thing, edwe.player_del)
+end -- function edwe_lmb_del
+
+function edwe_rmb_del(itemstack, user, pointed_thing)
+    return edwe_mark_second_or_act(itemstack, user, pointed_thing,
+        edwe.player_del, edwe_action_delete,
+        "EdWorldEdit: second point set. Delete region.")
+end -- function edwe_rmb_del
+
+-- ── register tools ───────────────────────────────────────────────────────────
+
+-- Fill axe: wooden axe, standard texture
 minetest.register_tool("edwe:wooden_axe", {
     description = "EdWorldEdit Wooden Axe",
     inventory_image = "edwe_wooden_axe.png",
     groups = {},
-    on_use = edwe_handle_lmb,
-    on_place = edwe_handle_rmb,
+    on_use = edwe_lmb_fill,
+    on_place = edwe_rmb_fill,
 })
 
--- Craft recipe: standard wooden axe shape, group-based for MTG + VoxeLibre compat
+-- Delete axe: inverted wooden axe texture
+minetest.register_tool("edwe:wooden_axe_delete", {
+    description = "EdWorldEdit Delete Axe",
+    inventory_image = "edwe_wooden_axe_delete.png",
+    groups = {},
+    on_use = edwe_lmb_del,
+    on_place = edwe_rmb_del,
+})
+
+-- Crafts: both tools use standard wooden axe shape, group-based for MTG + VoxeLibre
 minetest.register_craft({
     output = "edwe:wooden_axe",
     recipe = {
@@ -75,20 +131,41 @@ minetest.register_craft({
     },
 })
 
--- Detect tool change: reset state when player switches away from wooden_axe
+minetest.register_craft({
+    output = "edwe:wooden_axe_delete",
+    recipe = {
+        {"group:wood", "group:wood"},
+        {"group:wood", "group:stick"},
+        {"", "group:stick"},
+    },
+})
+
+-- ── state reset ──────────────────────────────────────────────────────────────
+
+-- Check one state entry: reset + "cancel" when player switches away or leaves.
+local function edwe_check_tool(name, state_tab, tool_name)
+    local player = minetest.get_player_by_name(name)
+    if player == nil then
+        state_tab[name] = nil
+        return
+    end -- if player nil
+    if player:get_wielded_item():get_name() ~= tool_name then
+        state_tab[name] = nil
+        minetest.chat_send_player(name, "EdWorldEdit : cancel")
+    end -- if switched
+end -- function edwe_check_tool
+
 minetest.register_globalstep(function(dtime)
-    for name, st in pairs(edwe.player) do
-        local player = minetest.get_player_by_name(name)
-        if player == nil then
-            edwe.player[name] = nil
-        elseif player:get_wielded_item():get_name() ~= "edwe:wooden_axe" then  -- if player nil
-            edwe.player[name] = nil
-            minetest.chat_send_player(name, "EdWorldEdit : cancel")
-        end -- if player nil / switched
-    end -- loop over players with state
+    for name in pairs(edwe.player) do
+        edwe_check_tool(name, edwe.player, "edwe:wooden_axe")
+    end -- loop over fill state
+    for name in pairs(edwe.player_del) do
+        edwe_check_tool(name, edwe.player_del, "edwe:wooden_axe_delete")
+    end -- loop over delete state
 end)
 
--- Cleanup on player leave
 minetest.register_on_leaveplayer(function(player)
-    edwe.player[player:get_player_name()] = nil
+    local name = player:get_player_name()
+    edwe.player[name] = nil
+    edwe.player_del[name] = nil
 end)

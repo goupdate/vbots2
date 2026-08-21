@@ -26,7 +26,7 @@ function bot_face_toward(pos, target_pos)
     -- dominant axis sets target param2 (see AGENTS.md Bot facedir direction)
     local target
     if math.abs(dx) > math.abs(dz) then      -- if east/west dominates
-        target = dx > 0 and 3 or 1          -- face +X / -X
+        target = dx > 0 and 3 or 1          -- face +X (param2=3, visual front +X) / -X (param2=1, visual front -X)
     else                                    -- if east/west dominates
         target = dz > 0 and 2 or 0          -- face +Z / -Z
     end                                     -- if east/west dominates
@@ -56,7 +56,18 @@ function find_nearest_hostile(pos, radius, player, in_front_only)
             hostile = pvp and pname ~= "" and pname ~= owner
         elseif obj and obj:get_luaentity() then             -- if object has luaentity
             local ent = obj:get_luaentity()
-            hostile = is_valid_target(ent, obj, player) and is_hostile_entity(ent)
+            -- In PvP mode, enemy bots (vbots2:bot_body owned by other players) are hostile too
+            if pvp and ent.name == "vbots2:bot_body" then -- if enemy bot
+                local bot_owner = nil
+                for key, info in pairs(vbots2.bot_info) do  -- loop over bot_info
+                    if info.body == obj then
+                        bot_owner = info.owner; break
+                    end                                   -- if info.body match
+                end                                       -- loop over bot_info
+                hostile = bot_owner ~= nil and bot_owner ~= "" and bot_owner ~= owner
+            else                                          -- if enemy bot
+                hostile = is_valid_target(ent, obj, player) and is_hostile_entity(ent)
+            end                                           -- if enemy bot
         end                                                 -- if player object
         if hostile then                                     -- if hostile target
             local epos = obj:get_pos()

@@ -229,12 +229,12 @@ Place a number **after** a command to repeat it (N−1) additional times. Works 
 
 | Icon | Command | Description |
 |------|---------|-------------|
-| ![laser](textures/vbots_laser.png) | **Laser** | Fire at nearest hostile (10 blocks, 90° cone, damage=10, 4s cooldown, recharges with sparks). 2-shot zombie kill. |
-| ![shot](textures/vbots_shot.png) | **Shot** | Throw snowball at nearest hostile (30 blocks, 90° cone, damage=40, 6s cooldown, projectile speed ~6.7). 1-shot zombie kill. |
+| ![laser](textures/vbots_laser.png) | **Laser** | Fire at nearest hostile (range: 3+0.5×lv blocks, 90° cone, damage based on level ★1→36, 4s cooldown with sparks). |
+| ![shot](textures/vbots_shot.png) | **Shot** | Throw snowball at nearest hostile (range: 5+1.0×lv blocks, 90° cone, damage based on level ❄1→21, 6s cooldown, speed ~6.7). |
 | ![bug_check](textures/vbots_bug_check.png) | **Bug?** | Skip next command if hostile mob within 5 blocks |
 | ![damaged_check](textures/vbots_damaged_check.png) | **Damaged?** | Skip next command if bot was attacked in last 3 seconds |
-| ![turn_danger](textures/vbots_turn_danger.png) | **Turn→** | Turn toward attacker (last 3s) or nearest hostile (30-block sphere). Line-of-sight required: only air and passable-through nodes (flora, leaves, torches, etc.) between bot and target. Follow with **×N** (number button) to scale search radius to N×30 — multipliers stack (×7×7 = ×49 = 1470-block radius). Turns only when a target is found — otherwise sparks, no turn. |
-| ![p2p_on](textures/vbots_p2p_on.png) | **P2P On** | Player-vs-player mode: any other player is treated as hostile. Active button is highlighted in the panel. |
+| ![turn_danger](textures/vbots_turn_danger.png) | **Turn→** | Turn toward attacker (last 3s) or nearest hostile (max(shot_range, 10)-block sphere). Line-of-sight required: only air and passable-through nodes (flora, leaves, torches, etc.) between bot and target. Follow with **×N** (number button) to scale search radius by N — multipliers stack (×7×7 = ×49). Turns only when a target is found — otherwise sparks, no turn. |
+| ![p2p_on](textures/vbots_p2p_on.png) | **P2P On** | Player-vs-player mode: any other player and bots owned by other players are treated as hostile. Active button is highlighted in the panel. |
 | ![p2p_off](textures/vbots_p2p_off.png) | **P2P Off** | Default: fire only at mobs, never at players. |
 
 **Laser & Shot** fire only within a 90° cone in the bot's facing direction. Both aim at the target's center (y+1) and perform a line-of-sight check (ignores flora, grass, plants, flowers, torches, leaves).
@@ -243,7 +243,34 @@ Place a number **after** a command to repeat it (N−1) additional times. Works 
 Bot uses `is_hostile_entity()`: checks `type=="monster"`, `hostile`, `_is_hostile`, `_attack`, `passive==false` flags on runtime entity + registered definition fallback.
 `is_valid_target()` excludes dropped items, vbots2:* entities, mcl_burning:*, mcl_wieldview:*, and any player.
 In **P2P On** mode any other player becomes a valid target for Laser, Shot, Bug?, Turn→ and the ram — the bot's owner is always excluded.
-Bot body (`vbots2:bot_body`): type=animal, HP=20, invisible (`visual_size={0,0,0}`), has `hostile=true` and `_attack=1` flags so mobs naturally target it. Mobs with `specific_attack` table get `"vbots2:bot_body"` added via unconditional injection at mod load (1s delay).
+
+**Bot body** (`vbots2:bot_body`): type=npc, starting HP=10, invisible (`visual_size={0,0,0}`), has `hostile=true` and `_attack=1` flags. All hostile mobs (`type=="monster"`) get `attack_npcs=true` and `specific_attack` injection at mod load (1s delay), so zombies/spiders/creepers/skeletons naturally attack bots.
+
+**Damage floating numbers** — each hit shows a red damage number (`-X.X`) above the target, floating upward for 1 second.
+
+**Level progression** — each kill advances the bot based on victim weight:
+
+| Victim | Weight |
+|--------|--------|
+| Player | 1.0 |
+| Creeper | 0.4 |
+| Spider | 0.3 |
+| Skeleton | 0.25 |
+| Other mob | 0.15 |
+
+Level = `floor(sqrt(total_kills)) + 1`. Stats scale with level:
+
+| Stat | Formula | Start (Lv.1) | Max (Lv.22) | Range |
+|------|---------|--------------|-------------|-------|
+| Laser ★ | `3 + (lv-1)*1.5` | 3.0 | 36.0 | `3+0.5×lv` |
+| Shot ❄ | `2 + (lv-1)*0.9` | 2.0 | 21.0 | `5+1.0×lv` |
+| HP ♥ | `10 + (lv-1)*0.8` | 10 | 27.0 | — |
+| Armor 🛡 | `floor((lv-1)/4)` | 0 | 5 | — |
+
+Bot HP uses `math.floor()` for integer HP. Danger detection radius = `max(shot_range, 10)`. The bot panel shows: **Name, Lv(%), Kills, ♥HP 🛡 ★ ❄**.
+
+**Label indicator** — a standalone entity floats above each bot (+2.5Y): `Lv.N(%)  ★laser/36  ❄shot/21  ♥hp/27  🛡armor`. Visible only to the bot's owner, within 5 blocks.
+
 Zombie HP = 20.
 
 ---
@@ -256,7 +283,7 @@ vbots2 introduces several behavioral changes:
 - **No gravity** — the bot no longer falls when the block below is air. It can float in mid-air indefinitely, allowing aerial platforms and ceiling work.
 - **Teleport navigation** — ![home](textures/vbots_move_home.png), ![go_player](textures/vbots_go_player.png), and ![goto_pos](textures/vbots_goto_pos.png) all teleport instantly instead of pathfinding. The bot vanishes and reappears at the target.
 - **Move Up** — ![up](textures/vbots_move_up.png) lets the bot move one step upward, complementing the existing Move Down command.
-- **P2P mode** — ![p2p_on](textures/vbots_p2p_on.png) makes the bot treat any other player as a hostile target (Laser, Shot, Bug?, Turn→ and the ram). ![p2p_off](textures/vbots_p2p_off.png) returns to mobs-only combat. The active mode button is highlighted in the panel.
+- **P2P mode** — ![p2p_on](textures/vbots_p2p_on.png) makes the bot treat any other player and bots owned by other players as hostile targets (Laser, Shot, Bug?, Turn→ and the ram). ![p2p_off](textures/vbots_p2p_off.png) returns to mobs-only combat. The active mode button is highlighted in the panel.
 
 ---
 

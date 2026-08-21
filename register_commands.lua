@@ -88,4 +88,6 @@ register_command("bug_check","Is enemy within 5 blocks?","vbots_bug_check.png")
 register_command("shot","Throw dark snowball at nearest hostile","vbots_shot.png")
 register_command("damaged_check","Was attacked in last 3s?","vbots_damaged_check.png")
 register_command("turn_danger","Turn toward attacker","vbots_turn_danger.png")
+register_command("p2p_on","Enable PvP targeting","vbots_p2p_on.png")
+register_command("p2p_off","Disable PvP targeting","vbots_p2p_off.png")
 

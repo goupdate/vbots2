@@ -254,6 +254,15 @@ meta:set_int("repeat",0)
     meta:mark_as_private("pvp")
     meta:set_float("damage_time",0)
     meta:set_string("damage_pos","")
+    meta:set_float("laser_damage", 3.0)
+    meta:set_float("shot_damage", 2.0)
+    meta:set_float("max_hp", 10.0)
+    meta:set_float("total_kills", 0.0)
+    meta:set_int("armor", 0)
+    meta:set_int("laser_kills", 0)
+    meta:set_int("shot_kills", 0)
+    -- spawn label entity above bot after activation
+    minetest.after(0.1, function() vbots2.update_bot_label(pos) end)
 end
 
 vbots2.wipe_programs = function(pos)
