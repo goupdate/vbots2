@@ -248,9 +248,9 @@ function vbots2.update_bot_label(bot_pos)
     local laser_lv = vbots2.kills_to_level(lk, 200)
     local shot_lv  = vbots2.kills_to_level(sk, 200)
     local shared_lv = vbots2.kills_to_level(tk, 100)
-    local laser = tonumber(meta:get_string("laser_damage")) or 3
-    local shot  = tonumber(meta:get_string("shot_damage")) or 2
-    local hp    = math.floor(tonumber(meta:get_string("max_hp")) or 10)
+    local laser = tonumber(meta:get_string("laser_damage")) or 8
+    local shot  = tonumber(meta:get_string("shot_damage")) or 16
+    local maxhp = math.floor(tonumber(meta:get_string("max_hp")) or 12)
     local armor = tonumber(meta:get_string("armor")) or 0
     -- progress within shared level
     local kills_cur = shared_lv * (shared_lv - 1) / 2
@@ -259,11 +259,9 @@ function vbots2.update_bot_label(bot_pos)
     local have = tk - kills_cur
     local pct = need > 0 and math.floor((have / need) * 100) or 0
     if pct > 99 then pct = 99 end
-local tag = string.format("Lv.%d (%d%%)  ★%d %.1f/36  ❄%d %.1f/21  ♥ %d/27  ⛨ %d",
-        shared_lv, pct, laser_lv, laser, shot_lv, shot, hp, armor)
 
     if not vbots2._bot_labels then vbots2._bot_labels = {} end
-    -- find bot_body entity to attach label to
+    -- find bot_body entity to attach label to + read current HP
     local body = nil
     for _, obj in ipairs(minetest.get_objects_inside_radius(bot_pos, 1)) do
         local ent = obj:get_luaentity()
@@ -272,6 +270,10 @@ local tag = string.format("Lv.%d (%d%%)  ★%d %.1f/36  ❄%d %.1f/21  ♥ %d/27
         end                                                       -- if bot_body
     end                                                           -- loop over objects
     if not body then return end                                   -- no body entity yet
+    local cur_hp = math.floor(body:get_hp())
+    local tag = string.format("Lv.%d (%d%%)  ★%d %.1f/36  ❄%d %.1f/21  ♥ %d/%d  ▣ %d",
+            shared_lv, pct, laser_lv, laser, shot_lv, shot, cur_hp, maxhp, armor)
+
     -- remove old label if any
     local old = vbots2._bot_labels[bot_key]
     if old and old:get_pos() then old:remove() end
@@ -325,6 +327,17 @@ minetest.register_entity("vbots2:bot_label", {
             self.object:set_properties({nametag = ok and self._tag or ""})
             self._visible = ok
         end                                                       -- if visibility changed
+        -- refresh current HP from bot_body every 2s (mobs attack via set_hp, not on_punch)
+        self._hp_timer = (self._hp_timer or 0) + dtime
+        if self._hp_timer >= 2.0 then self._hp_timer = 0
+            if self._key and vbots2._bot_labels then
+                local lbl = vbots2._bot_labels[self._key]
+                if lbl and lbl.get_pos and self._visible then
+                    local bpos = lbl:get_pos()
+                    if bpos then vbots2.update_bot_label({x=math.floor(bpos.x+0.5), y=bpos.y-0.1, z=math.floor(bpos.z+0.5)}) end
+                end                                             -- if label alive
+            end                                                 -- if key set
+        end                                                     -- if hp refresh timer
     end, -- on_step
 })
 

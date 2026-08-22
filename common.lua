@@ -431,9 +431,9 @@ function update_bot_kill_stats(meta, bot_pos, is_laser, victim_name, victim_hp, 
     local shared_lv = vbots2.kills_to_level(total_kills, 100)
 
     -- Stats from levels (linear scaling, cap at lv.100 for all — beyond 100 only display level)
-    local laser_dmg = math.min(36, 3 + (math.min(laser_lv, 100) - 1) * 33 / 99)
-    local shot_dmg  = math.min(21, 2 + (math.min(shot_lv,  100) - 1) * 19 / 99)
-    local max_hp    = math.min(27, math.floor(10 + (shared_lv - 1) * 17 / 99))
+    local laser_dmg = math.min(36, 8 + (math.min(laser_lv, 100) - 1) * 28 / 99)
+    local shot_dmg  = math.min(21, 16 + (math.min(shot_lv,  100) - 1) * 5 / 99)
+    local max_hp    = math.min(27, math.floor(12 + (shared_lv - 1) * 15 / 99))
     local armor     = math.min(5, math.floor(shared_lv * 5 / 100))
 
     meta:set_float("laser_damage", laser_dmg)

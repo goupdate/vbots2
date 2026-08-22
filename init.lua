@@ -174,9 +174,9 @@ vbots2.bot_restore = function(pos)
     end                                  -- if migrating
     -- migrate missing stat keys for bots placed before progression system
     if meta:get_string("laser_damage") == "" then
-        meta:set_float("laser_damage", 3.0)
-        meta:set_float("shot_damage", 2.0)
-        meta:set_float("max_hp", 10.0)
+meta:set_float("laser_damage", 8.0)
+    meta:set_float("shot_damage", 16.0)
+    meta:set_float("max_hp", 12.0)
         meta:set_float("total_kills", 0.0)
         meta:set_int("armor", 0)
         meta:set_float("laser_kills", 0)
