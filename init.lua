@@ -431,13 +431,14 @@ vbots2.bot_togglestate = function(pos,mode)
     end
     -- update minimap marker texture
     if newname then
+        vbots2.update_bot_label(pos)               -- ensure label stays visible
         local bot_key = meta:get_string("key")
         local bi = vbots2.bot_info[bot_key]
         if bi and bi.marker then
             local tex = (mode == "on") and "vbots_marker_on.png" or "vbots_marker_off.png"
             bi.marker:set_properties({textures = {tex}})
-        end
-    end
+        end                                         -- if marker exists
+    end                                             -- if newname
     --print(node.name.." "..newname)
     if newname then
         minetest.swap_node(pos,{name=newname, param2=node.param2})

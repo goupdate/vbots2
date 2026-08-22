@@ -167,6 +167,12 @@ minetest.register_entity("vbots2:bot_body", {
             if mhp <= 0 then mhp = 1.0 end
             self.object:set_hp(mhp)
             vbots2.update_bot_label(bpos)                       -- spawn label entity above bot
+            -- reverse index for O(1) P2P owner lookup
+            local owner_s = meta:get_string("owner")
+            if owner_s ~= "" then
+                if not vbots2._bot_body_owner then vbots2._bot_body_owner = {} end
+                vbots2._bot_body_owner[self.object] = owner_s
+            end                                                 -- if owner set
         else                                                  -- if entity has position
             self.object:set_hp(1)
         end                                                   -- if entity has position
@@ -211,6 +217,7 @@ minetest.register_entity("vbots2:bot_body", {
                 end
             end
             self.object:remove()
+            if vbots2._bot_body_owner then vbots2._bot_body_owner[self.object] = nil end
         else
             self.object:set_hp(hp)
         end
@@ -238,12 +245,9 @@ function vbots2.update_bot_label(bot_pos)
     if sk > 19900 then sk = 19900 end                              -- cap at lv 200
     if tk > 4950 then tk = 4950 end                                -- cap at lv 100
     -- weapon-specific levels: laser/shot max 200, HP/armor from total_kills max 100
-    local laser_lv = math.min(200, math.floor((1 + math.sqrt(1 + 8 * lk)) / 2))
-    local shot_lv  = math.min(200, math.floor((1 + math.sqrt(1 + 8 * sk)) / 2))
-    local shared_lv = math.min(100, math.floor((1 + math.sqrt(1 + 8 * tk)) / 2))
-    if laser_lv < 1 then laser_lv = 1 end
-    if shot_lv  < 1 then shot_lv  = 1 end
-    if shared_lv < 1 then shared_lv = 1 end
+    local laser_lv = vbots2.kills_to_level(lk, 200)
+    local shot_lv  = vbots2.kills_to_level(sk, 200)
+    local shared_lv = vbots2.kills_to_level(tk, 100)
     local laser = tonumber(meta:get_string("laser_damage")) or 3
     local shot  = tonumber(meta:get_string("shot_damage")) or 2
     local hp    = math.floor(tonumber(meta:get_string("max_hp")) or 10)
@@ -310,11 +314,17 @@ minetest.register_entity("vbots2:bot_label", {
         if not self._owner or not self._tag then return end       -- not yet initialized
         local p = minetest.get_player_by_name(self._owner)
         if not p then
-            self.object:set_properties({nametag = ""})            -- player offline → hide
+            if self._visible then                                 -- was visible → now hidden
+                self.object:set_properties({nametag = ""})
+                self._visible = false
+            end                                                   -- if was visible
             return
         end                                                       -- if player offline
         local ok = vector.distance(p:get_pos(), self.object:get_pos()) <= 20
-        self.object:set_properties({nametag = ok and self._tag or ""})
+        if ok ~= self._visible then                               -- visibility changed
+            self.object:set_properties({nametag = ok and self._tag or ""})
+            self._visible = ok
+        end                                                       -- if visibility changed
     end, -- on_step
 })
 
@@ -327,12 +337,14 @@ minetest.register_globalstep(function(dtime)
     if vbots2._label_recovery_timer < 30 then return end
     vbots2._label_recovery_timer = 0
     if not vbots2.bot_info then return end
-    for _, info in pairs(vbots2.bot_info) do
+    -- collect stale entries first (no UB: pairs() + mutation = unsafe)
+    local stale = {}
+    for key, info in pairs(vbots2.bot_info) do
         local bpos = info.pos
         if bpos and type(bpos.x) == "number" then              -- bot has valid position
             local node = minetest.get_node(bpos)
             if not node.name:find("^vbots2:") then            -- not a bot node (possibly destroyed)
-                vbots2.bot_info[_] = nil                       -- clean up stale entry
+                stale[#stale + 1] = key                       -- mark for cleanup
             else                                                -- valid bot node
                 local meta = minetest.get_meta(bpos)
                 local bk = meta:get_string("key")
@@ -345,6 +357,15 @@ minetest.register_globalstep(function(dtime)
             end                                                 -- if valid bot node
         end                                                    -- if has valid pos
     end                                                        -- loop over bot_info
+    for _, key in ipairs(stale) do                              -- purge stale entries safely
+        vbots2.bot_info[key] = nil
+    end                                                         -- loop over stale
+    -- periodic dmg_stack cleanup (keys accumulate in combat areas)
+    vbots2._dmg_stack_cleanup = (vbots2._dmg_stack_cleanup or 0) + 1
+    if vbots2._dmg_stack and vbots2._dmg_stack_cleanup > 10 then
+        vbots2._dmg_stack = {}                                  -- reset every ~5 min
+        vbots2._dmg_stack_cleanup = 0
+    end                                                         -- if cleanup needed
 end)                                                           -- globalstep
 
 -- Floating damage text entity: RPG-style numbers above bots/mobs

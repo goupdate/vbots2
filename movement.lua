@@ -58,12 +58,7 @@ function find_nearest_hostile(pos, radius, player, in_front_only)
             local ent = obj:get_luaentity()
             -- In PvP mode, enemy bots (vbots2:bot_body owned by other players) are hostile too
             if pvp and ent.name == "vbots2:bot_body" then -- if enemy bot
-                local bot_owner = nil
-                for key, info in pairs(vbots2.bot_info) do  -- loop over bot_info
-                    if info.body == obj then
-                        bot_owner = info.owner; break
-                    end                                   -- if info.body match
-                end                                       -- loop over bot_info
+                local bot_owner = vbots2._bot_body_owner and vbots2._bot_body_owner[obj]
                 hostile = bot_owner ~= nil and bot_owner ~= "" and bot_owner ~= owner
             else                                          -- if enemy bot
                 hostile = is_valid_target(ent, obj, player) and is_hostile_entity(ent)

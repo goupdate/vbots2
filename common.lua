@@ -343,20 +343,19 @@ function is_hostile_entity(ent)
         if def.type == "monster" then return true end
         if def.hostile or def._attack or def.passive == false then return true end
     end
-    vbots2.log("HOSTILE", "false for " .. tostring(ent.name) .. " type=" .. tostring(ent.type) .. " hostile=" .. tostring(ent.hostile) .. " def=" .. tostring(def ~= nil) .. " def.type=" .. tostring(def and def.type))
     return false
-end
+end -- function is_hostile_entity
 
 -------------------------------------
 -- Show floating damage number above an entity position (RPG-style).
 -- New numbers appear above old ones (Y-offset stacks), fade after 1s.
 -------------------------------------
-local _dmg_stack = {} -- Y-offset per position-key (x..","..z)
+vbots2._dmg_stack = vbots2._dmg_stack or {} -- Y-offset per position-key (x..","..z); cleaned by recovery
 function bot_show_damage_number(near_pos, text)
     local key = math.floor(near_pos.x + 0.5) .. "," .. math.floor(near_pos.z + 0.5)
-    _dmg_stack[key] = (_dmg_stack[key] or 0) + 0.25
-    if _dmg_stack[key] > 3.0 then _dmg_stack[key] = 0.25 end
-    local y_off = _dmg_stack[key]
+    vbots2._dmg_stack[key] = (vbots2._dmg_stack[key] or 0) + 0.25
+    if vbots2._dmg_stack[key] > 3.0 then vbots2._dmg_stack[key] = 0.25 end
+    local y_off = vbots2._dmg_stack[key]
     local spawn_y = near_pos.y + 2.0 + y_off
     local obj = minetest.add_entity({x=near_pos.x, y=spawn_y, z=near_pos.z}, "vbots2:damage_text")
     if obj then
@@ -390,10 +389,10 @@ end -- function find_bot_body
 -------------------------------------
 -- Level from kills: triangular threshold L*(L-1)/2, max_level cap.
 --------------------------------------
-local function kills_to_level(k, max_lv)
+function vbots2.kills_to_level(k, max_lv)
     local lv = math.floor((1 + math.sqrt(1 + 8 * (k or 0))) / 2)
     return math.min(max_lv, math.max(1, lv))
-end -- function kills_to_level
+end -- function vbots2.kills_to_level
 
 -------------------------------------
 -- Bot kill stats: separated counters for laser/shot, shared HP/armor from total_kills.
@@ -427,9 +426,9 @@ function update_bot_kill_stats(meta, bot_pos, is_laser, victim_name, victim_hp, 
     meta:set_float("total_kills", total_kills)
 
     -- Levels: laser/shot max 200, HP/armor max 100
-    local laser_lv = kills_to_level(laser_kills, 200)
-    local shot_lv  = kills_to_level(shot_kills,  200)
-    local shared_lv = kills_to_level(total_kills, 100)
+    local laser_lv = vbots2.kills_to_level(laser_kills, 200)
+    local shot_lv  = vbots2.kills_to_level(shot_kills,  200)
+    local shared_lv = vbots2.kills_to_level(total_kills, 100)
 
     -- Stats from levels (linear scaling, cap at lv.100 for all — beyond 100 only display level)
     local laser_dmg = math.min(36, 3 + (math.min(laser_lv, 100) - 1) * 33 / 99)
