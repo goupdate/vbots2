@@ -376,7 +376,7 @@ end                                                                     -- funct
 --  is_laser: true for laser kill, false for shot kill (increments specific counter + log)
 -- Shared helper: find bot_body entity by bot position and key.
 -- Returns (obj, hp_before) or (nil, 0).
-local function find_bot_body(bot_pos, bot_key)
+function find_bot_body(bot_pos, bot_key)
     for _, obj in ipairs(minetest.get_objects_inside_radius(bot_pos, 0.5)) do
         local ent = obj:get_luaentity()
         if ent and ent.name == "vbots2:bot_body" and ent._key == bot_key then
@@ -458,8 +458,8 @@ end -- function update_bot_kill_stats
 function vbots2.compute_bot_stats(meta)
     local tk = tonumber(meta:get_string("total_kills")) or 0
     local level = math.max(1, math.floor((1 + math.sqrt(1 + 8 * tk)) / 2))
-    local laser_range = 3 + 0.5 * (level - 1)
-    local shot_range = 5 + 1.0 * (level - 1)
+    local laser_range = 5 + 0.5 * (level - 1)
+    local shot_range = 9 + 1.0 * (level - 1)
     local danger_range = math.max(shot_range, 10)
     return level, laser_range, shot_range, danger_range
 end -- function vbots2.compute_bot_stats
