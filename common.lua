@@ -154,10 +154,6 @@ function bot_shoot(pos, meta, cfg)
             local hp_before = nearest:get_hp()
             local hp_after = math.max(0, hp_before - cfg.damage)
             nearest:set_hp(hp_after)
-            -- self-heal bot_body on hit (+0.02)
-            local bot_key = meta:get_string("key")
-            local body, bhp = find_bot_body(pos, bot_key)
-            if body then body:set_hp(math.min(meta:get_float("max_hp"), math.floor(bhp + 0.02))) end
             local tname = nearest:get_player_name()
             vbots2.log(bot_name, string.format("LASER hit %s dmg=%.1f left=%d ★%.2f ❄%.2f ♥%.2f", tname, cfg.damage, hp_after, ld, sd, mh))
             if hp_after == 0 and hp_before > 0 then
@@ -173,10 +169,6 @@ function bot_shoot(pos, meta, cfg)
             local hp_before = ent.object:get_hp()
             local hp_after = math.max(0, hp_before - cfg.damage)
             ent.object:set_hp(hp_after)
-            -- self-heal bot_body on hit (+0.02)
-            local bt_key = meta:get_string("key")
-            local body2, bhp2 = find_bot_body(pos, bt_key)
-            if body2 then body2:set_hp(math.min(meta:get_float("max_hp"), math.floor(bhp2 + 0.02))) end
             local target_pos = nearest:get_pos()
             if target_pos then
                 local lost = hp_before - hp_after

@@ -153,12 +153,13 @@ minetest.register_entity("vbots2:bot_body", {
         visual_size = {x = 0, y = 0, z = 0},
         textures = {"blank.png"},
         hp_max = 27,
-    },
+        armor_groups = {fleshy = 0},                     -- bot armor is from progression stat, not entity
+    },                                                      -- initial_properties
     type = "npc",                                             -- mcl_mobs: match attack_npcs check for hostile mob targeting
     _attack = 1,
     hostile = true,
     on_activate = function(self, staticdata)
-        self.object:set_armor_groups({fleshy = 100})
+        self.object:set_armor_groups({fleshy = 0})       -- bot armor handled by progression stat
         local epos = self.object:get_pos()
         if epos then                                          -- if entity has position
             local bpos = {x = math.floor(epos.x + 0.5), y = math.floor(epos.y), z = math.floor(epos.z + 0.5)}
@@ -225,6 +226,29 @@ minetest.register_entity("vbots2:bot_body", {
     on_death = function(self)
         -- handled by on_punch
     end,
+    on_step = function(self, dtime)
+        -- passive heal: +0.01 HP/sec if not attacked in 10s, only when below max
+        self._heal_timer = (self._heal_timer or 0) + dtime
+        if self._heal_timer >= 1.0 then self._heal_timer = 0
+            local hp = self.object:get_hp()
+            if hp > 0 then
+                local epos = self.object:get_pos()
+                if epos then
+                    local bpos = {x = math.floor(epos.x + 0.5), y = math.floor(epos.y), z = math.floor(epos.z + 0.5)}
+                    local meta = minetest.get_meta(bpos)
+                    local dt = meta:get_float("damage_time")
+                    local now = minetest.get_gametime()
+                    if now - dt >= 10 then                     -- not attacked in 10s
+                        local mhp = meta:get_float("max_hp")
+                        if mhp <= 0 then mhp = 12 end
+                        if hp < mhp then
+                            self.object:set_hp(math.min(mhp, hp + 0.01))
+                        end                                     -- if hp < max
+                    end                                         -- if not attacked
+                end                                             -- if epos
+            end                                                 -- if hp > 0
+        end                                                     -- if 1s timer
+    end, -- on_step
 })
 
 -------------------------------------
@@ -252,6 +276,9 @@ function vbots2.update_bot_label(bot_pos)
     local shot  = tonumber(meta:get_string("shot_damage")) or 16
     local maxhp = math.floor(tonumber(meta:get_string("max_hp")) or 12)
     local armor = tonumber(meta:get_string("armor")) or 0
+    -- calculate max_hp from level formula (not meta — may be outdated for old bots)
+    local hp_cap = math.min(27, math.floor(12 + (shared_lv - 1) * 15 / 99))
+    meta:set_float("max_hp", hp_cap)                            -- sync meta with level cap for healing
     -- progress within shared level
     local kills_cur = shared_lv * (shared_lv - 1) / 2
     local kills_next = shared_lv * (shared_lv + 1) / 2
@@ -272,7 +299,7 @@ function vbots2.update_bot_label(bot_pos)
     if not body then return end                                   -- no body entity yet
     local cur_hp = math.floor(body:get_hp())
     local tag = string.format("Lv.%d (%d%%)  ★%d %.1f/36  ❄%d %.1f/21  ♥ %d/%d  ▣ %d",
-            shared_lv, pct, laser_lv, laser, shot_lv, shot, cur_hp, maxhp, armor)
+            shared_lv, pct, laser_lv, laser, shot_lv, shot, cur_hp, hp_cap, armor)
 
     -- remove old label if any
     local old = vbots2._bot_labels[bot_key]
@@ -287,6 +314,7 @@ function vbots2.update_bot_label(bot_pos)
             ent._owner = owner
             ent._tag = tag
             ent._key = bot_key
+            ent._maxhp = hp_cap                                 -- for HP refresh in on_step
         end                                                   -- if luaentity ready
         vbots2._bot_labels[bot_key] = obj
     end                                                       -- if obj spawned
@@ -329,14 +357,16 @@ minetest.register_entity("vbots2:bot_label", {
         end                                                       -- if visibility changed
         -- refresh current HP from bot_body every 2s (mobs attack via set_hp, not on_punch)
         self._hp_timer = (self._hp_timer or 0) + dtime
-        if self._hp_timer >= 2.0 then self._hp_timer = 0
-            if self._key and vbots2._bot_labels then
-                local lbl = vbots2._bot_labels[self._key]
-                if lbl and lbl.get_pos and self._visible then
-                    local bpos = lbl:get_pos()
-                    if bpos then vbots2.update_bot_label({x=math.floor(bpos.x+0.5), y=bpos.y-0.1, z=math.floor(bpos.z+0.5)}) end
-                end                                             -- if label alive
-            end                                                 -- if key set
+        if self._hp_timer >= 2.0 and self._visible and self._maxhp then self._hp_timer = 0
+            local body = self.object:get_attach()
+            if body then
+                local cur_hp = math.floor(body:get_hp())
+                local new_tag = self._tag:gsub("♥ %d+/", "♥ " .. cur_hp .. "/")
+                if new_tag ~= self._tag then
+                    self._tag = new_tag
+                    self.object:set_properties({nametag = new_tag})
+                end                                             -- if tag changed
+            end                                                 -- if body attached
         end                                                     -- if hp refresh timer
     end, -- on_step
 })
@@ -509,19 +539,6 @@ on_step = function(self, dtime)
                     vbots2.log(bname, string.format("SHOT hit %s dmg=%.1f left=%d ★%.2f ❄%.2f ♥%.2f",
                         tostring(hitname), self._damage, hp_after, ld, ss, mh))
                     obj:set_hp(hp_after)
-                    -- self-heal bot_body on hit (+0.02)
-                    if self._bot_pos then
-                        local skey = bmeta and bmeta:get_string("key")
-                        if skey then
-                            for _, bobj in ipairs(minetest.get_objects_inside_radius(self._bot_pos, 0.5)) do
-                                local bent = bobj:get_luaentity()
-                                if bent and bent.name == "vbots2:bot_body" and bent._key == skey then
-                                    bobj:set_hp(math.min(mh, math.floor(bobj:get_hp() + 0.02)))
-                                    break
-                                end -- if bot_body match
-                            end -- loop over bot pos objects
-                        end -- if skey set
-                    end -- if bot_pos set
                     -- floating damage number above hit entity
                     local mobpos = obj:get_pos()
                     if mobpos then

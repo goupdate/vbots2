@@ -146,6 +146,7 @@ local function get_formspec(pos,meta)
     local shot = tonumber(meta:get_string("shot_damage")) or 16
     local maxhp = math.floor(tonumber(meta:get_string("max_hp")) or 12)
     local armor = tonumber(meta:get_string("armor")) or 0
+    local hp_cap = math.min(27, math.floor(12 + (math.min(shared_lv, 100) - 1) * 15 / 99))
     local kills_cur = shared_lv * (shared_lv - 1) / 2
     local kills_next = shared_lv * (shared_lv + 1) / 2
     local need = kills_next - kills_cur
@@ -161,7 +162,7 @@ local function get_formspec(pos,meta)
                      .."Kills: " .. kills .. " / " .. kills_next .. "  "
                      .."★" .. laser_lv .. " " .. string.format("%.1f", laser) .. "/36  "
                      .."❄" .. shot_lv .. " " .. string.format("%.1f", shot) .. "/21  "
-                     .."♥" .. maxhp .. "/27  "
+                     .."♥" .. hp_cap .. "/" .. hp_cap .. "  "
                      .."▣ " .. armor .. "/5  "
                      .."]"
                      ..panel_main(bot_pos,fs_panel,meta:get_int("pvp"))
