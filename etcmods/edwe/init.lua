@@ -7,6 +7,7 @@ edwe.player = {}       -- fill tool state: {pos1 = vector, pos2 = vector}
 edwe.player_del = {}   -- delete tool state: {pos1 = vector, pos2 = vector}
 
 dofile(minetest.get_modpath("edwe") .. "/fill.lua")
+dofile(minetest.get_modpath("edwe") .. "/protect.lua")
 
 -- ── helpers ──────────────────────────────────────────────────────────────────
 

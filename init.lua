@@ -179,6 +179,8 @@ vbots2.bot_restore = function(pos)
         meta:set_float("max_hp", 10.0)
         meta:set_float("total_kills", 0.0)
         meta:set_int("armor", 0)
+        meta:set_float("laser_kills", 0)
+        meta:set_float("shot_kills", 0)
     end                                                   -- if migrating stats
     vbots2.ensure_prog_inv(bot_key)
     if not vbots2.bot_info[bot_key] then
@@ -200,6 +202,16 @@ end
 -------------------------------------
 vbots2.bot_init = function(pos, placer)
     local bot_owner = placer:get_player_name()
+    -- enforce per-player bot limit (max 64)
+    local bot_count = 0
+    for _, bi in pairs(vbots2.bot_info) do
+        if bi.owner == bot_owner then bot_count = bot_count + 1 end
+    end                                                 -- count player bots
+    if bot_count >= 64 then
+        minetest.chat_send_player(bot_owner,
+            "Bot limit 64 is reached. Creation cancelled.")
+        return false
+    end                                                 -- if limit reached
     local bot_name = bot_namer()
     local bot_key = vbots2.get_key()
 vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
@@ -267,11 +279,12 @@ meta:set_int("repeat",0)
     meta:set_float("max_hp", 10.0)
     meta:set_float("total_kills", 0.0)
     meta:set_int("armor", 0)
-    meta:set_int("laser_kills", 0)
-    meta:set_int("shot_kills", 0)
+    meta:set_float("laser_kills", 0)
+    meta:set_float("shot_kills", 0)
     -- spawn label entity above bot after activation
     minetest.after(0.1, function() vbots2.update_bot_label(pos) end)
-end
+    return true
+end -- function vbots2.bot_init
 
 vbots2.wipe_programs = function(pos)
     local meta = minetest.get_meta(pos)
@@ -388,6 +401,7 @@ vbots2.bot_togglestate = function(pos,mode)
         newname = "vbots2:on"
         -- starting any bot lifts the owner's global stop-all flag
         vbots2.stop_all[meta:get_string("owner")] = nil
+        timer:stop()                                      -- stop any running timer before restart
         timer:start(1/meta:get_int("steptime"))
         meta:set_int("PC",0)
         meta:set_int("PR",0)

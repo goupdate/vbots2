@@ -130,26 +130,39 @@ local function get_formspec(pos,meta)
     --print(dump(meta:to_table().fields))
 	--print("Panel:"..fs_panel)
 	--print("Program:"..fs_program)
+    local lk = tonumber(meta:get_string("laser_kills")) or 0
+    local sk = tonumber(meta:get_string("shot_kills")) or 0
     local kills = tonumber(meta:get_string("total_kills")) or 0
-    local level = math.floor(math.sqrt(kills)) + 1
+    if lk > 19900 then lk = 19900 end                                 -- cap lv 200
+    if sk > 19900 then sk = 19900 end                                 -- cap lv 200
+    if kills > 4950 then kills = 4950 end                             -- cap lv 100
+    local laser_lv = math.min(200, math.floor((1 + math.sqrt(1 + 8 * lk)) / 2))
+    local shot_lv = math.min(200, math.floor((1 + math.sqrt(1 + 8 * sk)) / 2))
+    local shared_lv = math.min(100, math.floor((1 + math.sqrt(1 + 8 * kills)) / 2))
+    if laser_lv < 1 then laser_lv = 1 end
+    if shot_lv  < 1 then shot_lv  = 1 end
+    if shared_lv < 1 then shared_lv = 1 end
     local laser = tonumber(meta:get_string("laser_damage")) or 3
     local shot = tonumber(meta:get_string("shot_damage")) or 2
     local maxhp = math.floor(tonumber(meta:get_string("max_hp")) or 10)
     local armor = tonumber(meta:get_string("armor")) or 0
-    local lvpct = math.floor((kills - (level-1)*(level-1)) / (level*level - (level-1)*(level-1)) * 100)
+    local kills_cur = shared_lv * (shared_lv - 1) / 2
+    local kills_next = shared_lv * (shared_lv + 1) / 2
+    local need = kills_next - kills_cur
+    local have = kills - kills_cur
+    local lvpct = need > 0 and math.floor((have / need) * 100) or 0
     if lvpct > 99 then lvpct = 99 end
-    local next_level = level * level                              -- kills needed for next level
-    local formspec = "size[16,9]"
+    local formspec = "size[16,9.3]"
                      .."field[3,0.2;3,1;bot_name;;" ..bot_name.. "]"
                      .."image_button[5.5,0;1,1;vbots_gui_check.png;bot_rename;]"
                      .."tooltip[5.5,0;1,1;Rename]"
-                     .."label[0.5,0.5;"
-                     .."Lv." .. level .. "(" .. lvpct .. "%)  "
-                     .."Kills: " .. kills .. " / " .. next_level .. "  "
-                     .."♥" .. maxhp .. "  "
-                     .."🛡 Armor: " .. armor .. "  "
-                     .."★ " .. string.format("%.1f", laser) .. "  "
-                     .."❄ " .. string.format("%.1f", shot)
+                     .."label[4.0,9.40;"
+                     .."Lv." .. shared_lv .. " (" .. lvpct .. "%)  "
+                     .."Kills: " .. kills .. " / " .. kills_next .. "  "
+                     .."★" .. laser_lv .. " " .. string.format("%.1f", laser) .. "/36  "
+                     .."❄" .. shot_lv .. " " .. string.format("%.1f", shot) .. "/21  "
+                     .."♥" .. maxhp .. "/27  "
+                     .."🛡 Armor: " .. armor .. "/5"
                      .."]"
                      ..panel_main(bot_pos,fs_panel,meta:get_int("pvp"))
                      ..panel_code(bot_key,fs_program)

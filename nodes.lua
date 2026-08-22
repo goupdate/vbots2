@@ -29,7 +29,11 @@ local function register_bot(node_name,node_desc,node_tiles,node_groups)
         --light_source = 14,
         on_blast = function() end,
         after_place_node = function(pos, placer, itemstack, pointed_thing)
-            vbots2.bot_init(pos, placer)
+            local ok = vbots2.bot_init(pos, placer)
+            if not ok then
+                minetest.set_node(pos, {name = "air"})       -- cancel placement
+                return
+            end                                             -- if limit reached
             local facing = minetest.dir_to_facedir(placer:get_look_dir())
             facing = (facing+2)%4
             facebot(facing,pos)
@@ -227,35 +231,45 @@ function vbots2.update_bot_label(bot_pos)
     if bot_key == "" then return end                          -- no key = not initialized
     local owner = meta:get_string("owner")
     if owner == "" then return end                            -- no owner = invalid
-    local kills = tonumber(meta:get_string("total_kills")) or 0
-    if kills == 0 then kills = 0 end                              -- 0-value keys in meta return ""
-    local level = math.floor(math.sqrt(kills + 0.01)) + 1
+    local lk = tonumber(meta:get_string("laser_kills")) or 0
+    local sk = tonumber(meta:get_string("shot_kills")) or 0
+    local tk = tonumber(meta:get_string("total_kills")) or 0
+    if lk > 19900 then lk = 19900 end                              -- cap at lv 200
+    if sk > 19900 then sk = 19900 end                              -- cap at lv 200
+    if tk > 4950 then tk = 4950 end                                -- cap at lv 100
+    -- weapon-specific levels: laser/shot max 200, HP/armor from total_kills max 100
+    local laser_lv = math.min(200, math.floor((1 + math.sqrt(1 + 8 * lk)) / 2))
+    local shot_lv  = math.min(200, math.floor((1 + math.sqrt(1 + 8 * sk)) / 2))
+    local shared_lv = math.min(100, math.floor((1 + math.sqrt(1 + 8 * tk)) / 2))
+    if laser_lv < 1 then laser_lv = 1 end
+    if shot_lv  < 1 then shot_lv  = 1 end
+    if shared_lv < 1 then shared_lv = 1 end
     local laser = tonumber(meta:get_string("laser_damage")) or 3
-    local shot = tonumber(meta:get_string("shot_damage")) or 2
-    local hp = tonumber(meta:get_string("max_hp")) or 10
+    local shot  = tonumber(meta:get_string("shot_damage")) or 2
+    local hp    = math.floor(tonumber(meta:get_string("max_hp")) or 10)
     local armor = tonumber(meta:get_string("armor")) or 0
-    -- progress to next level: (kills - threshold_current) / (threshold_next - threshold_current) * 100
-    local kills_for_lvl = (level - 1) * (level - 1)             -- kills needed to REACH current level
-    local kills_for_next = level * level                         -- kills needed for NEXT level
-    local need = kills_for_next - kills_for_lvl                  -- kills needed WITHIN this level
-    local have = kills - kills_for_lvl                           -- kills earned this level
-    local pct = math.floor((have / need) * 100)
-    if pct > 99 then pct = 99 end                                -- cap until actually leveled
-    local tag = string.format("Lv.%d(%d%%)  ★ %.1f/36  ❄ %.1f/21  ♥ %d/27  A %d",
-        level, pct, laser, shot, hp, armor)
+    -- progress within shared level
+    local kills_cur = shared_lv * (shared_lv - 1) / 2
+    local kills_next = shared_lv * (shared_lv + 1) / 2
+    local need = kills_next - kills_cur
+    local have = tk - kills_cur
+    local pct = need > 0 and math.floor((have / need) * 100) or 0
+    if pct > 99 then pct = 99 end
+    local tag = string.format("Lv.%d (%d%%)  ★%d %.1f/36  ❄%d %.1f/21  ♥ %d/27  A %d",
+        shared_lv, pct, laser_lv, laser, shot_lv, shot, hp, armor)
 
     if not vbots2._bot_labels then vbots2._bot_labels = {} end
     -- remove old label if any
     local old = vbots2._bot_labels[bot_key]
     if old and old:get_pos() then old:remove() end
     -- spawn standalone entity above bot
-    local label_pos = {x = bot_pos.x + 0.5, y = bot_pos.y + 2.5, z = bot_pos.z + 0.5}
+    local label_pos = {x = bot_pos.x + 0.5, y = bot_pos.y - 0.5, z = bot_pos.z + 0.5}
     local obj = minetest.add_entity(label_pos, "vbots2:bot_label")
     if obj then
         local ent = obj:get_luaentity()
         ent._owner = owner
         ent._tag = tag
-        ent._key = bot_key
+        obj:set_properties({nametag = tag})
         vbots2._bot_labels[bot_key] = obj
     end -- if obj spawned
 end -- function vbots2.update_bot_label
@@ -267,23 +281,54 @@ minetest.register_entity("vbots2:bot_label", {
         physical = false,
         collide_with_objects = false,
         pointable = false,
-        visual = "cube",
+        visual = "upright_sprite",
         visual_size = {x = 0.01, y = 0.01},
-        textures = {"vbots_damage_dot.png", "vbots_damage_dot.png",
-                    "vbots_damage_dot.png", "vbots_damage_dot.png",
-                    "vbots_damage_dot.png", "vbots_damage_dot.png"},
+        textures = {"vbots_damage_dot.png"},
         static_save = false,
         glow = 0,
         nametag = "",
         nametag_color = "#FFFF80",
     },
     on_activate = function(self, staticdata)
-        -- fields (_owner, _tag, _key) set by vbots2.update_bot_label
+        self._check_timer = 0
     end, -- on_activate
     on_step = function(self, dtime)
-        -- visibility handled by shared globalstep in common.lua
+        self._check_timer = (self._check_timer or 0) + dtime
+        if self._check_timer < 0.5 then return end; self._check_timer = 0
+        if not self._owner then return end                        -- not yet initialized
+        local p = minetest.get_player_by_name(self._owner)
+        if not p then
+            self.object:set_properties({nametag = ""})            -- player offline → hide
+            return
+        end                                                       -- if player offline
+        local ok = vector.distance(p:get_pos(), self.object:get_pos()) <= 20
+        self.object:set_properties({nametag = ok and (self._tag or "") or ""})
     end, -- on_step
 })
+
+-----------------------------------------
+-- Recovery: every 30s ensure all bots in active mapblocks have labels.
+-----------------------------------------
+minetest.register_globalstep(function(dtime)
+    if not vbots2._label_recovery_timer then vbots2._label_recovery_timer = 0 end
+    vbots2._label_recovery_timer = vbots2._label_recovery_timer + dtime
+    if vbots2._label_recovery_timer < 30 then return end
+    vbots2._label_recovery_timer = 0
+    if not vbots2.bot_info then return end
+    for _, info in pairs(vbots2.bot_info) do
+        local bpos = info.pos
+        if bpos then                                           -- bot has position
+            local meta = minetest.get_meta(bpos)
+            local bk = meta:get_string("key")
+            if bk ~= "" then                                   -- valid key
+                local old = vbots2._bot_labels and vbots2._bot_labels[bk]
+                if not old or not old:get_pos() then           -- no label or dead label
+                    vbots2.update_bot_label(bpos)
+                end                                            -- if label missing
+            end                                                -- if valid key
+        end                                                    -- if has pos
+    end                                                        -- loop over bot_info
+end)                                                           -- globalstep
 
 -- Floating damage text entity: RPG-style numbers above bots/mobs
 -- transparent 1×1 upright_sprite with nametag, lives 1 second
@@ -413,6 +458,19 @@ on_step = function(self, dtime)
                     vbots2.log(bname, string.format("SHOT hit %s dmg=%.1f left=%d ★%.2f ❄%.2f ♥%.2f",
                         tostring(hitname), self._damage, hp_after, ld, ss, mh))
                     obj:set_hp(hp_after)
+                    -- self-heal bot_body on hit (+0.02)
+                    if self._bot_pos then
+                        local skey = bmeta and bmeta:get_string("key")
+                        if skey then
+                            for _, bobj in ipairs(minetest.get_objects_inside_radius(self._bot_pos, 0.5)) do
+                                local bent = bobj:get_luaentity()
+                                if bent and bent.name == "vbots2:bot_body" and bent._key == skey then
+                                    bobj:set_hp(math.min(mh, math.floor(bobj:get_hp() + 0.02)))
+                                    break
+                                end -- if bot_body match
+                            end -- loop over bot pos objects
+                        end -- if skey set
+                    end -- if bot_pos set
                     -- floating damage number above hit entity
                     local mobpos = obj:get_pos()
                     if mobpos then
@@ -425,7 +483,7 @@ on_step = function(self, dtime)
                     end                                                         -- if mobpos
                     if hp_after == 0 and hp > 0 and self._bot_pos and bmeta then
                         local vt = obj:is_player() and "player" or hitname
-                        update_bot_kill_stats(bmeta, self._bot_pos, false, vt)  -- shot kill
+                        update_bot_kill_stats(bmeta, self._bot_pos, false, vt, hp, 0)   -- shot kill
                         local nss = bmeta:get_float("shot_damage")
                         local nmh = bmeta:get_float("max_hp")
                         local upd = ""

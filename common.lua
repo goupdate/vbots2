@@ -154,10 +154,14 @@ function bot_shoot(pos, meta, cfg)
             local hp_before = nearest:get_hp()
             local hp_after = math.max(0, hp_before - cfg.damage)
             nearest:set_hp(hp_after)
+            -- self-heal bot_body on hit (+0.02)
+            local bot_key = meta:get_string("key")
+            local body, bhp = find_bot_body(pos, bot_key)
+            if body then body:set_hp(math.min(meta:get_float("max_hp"), math.floor(bhp + 0.02))) end
             local tname = nearest:get_player_name()
             vbots2.log(bot_name, string.format("LASER hit %s dmg=%.1f left=%d ★%.2f ❄%.2f ♥%.2f", tname, cfg.damage, hp_after, ld, sd, mh))
             if hp_after == 0 and hp_before > 0 then
-                update_bot_kill_stats(meta, pos, true, "player")        -- laser kill
+                update_bot_kill_stats(meta, pos, true, "player", 20, 0)  -- laser kill: 20HP 0armor default
                 local nld = meta:get_float("laser_damage")
                 local nmh = meta:get_float("max_hp")
                 local upd = ""
@@ -169,6 +173,10 @@ function bot_shoot(pos, meta, cfg)
             local hp_before = ent.object:get_hp()
             local hp_after = math.max(0, hp_before - cfg.damage)
             ent.object:set_hp(hp_after)
+            -- self-heal bot_body on hit (+0.02)
+            local bt_key = meta:get_string("key")
+            local body2, bhp2 = find_bot_body(pos, bt_key)
+            if body2 then body2:set_hp(math.min(meta:get_float("max_hp"), math.floor(bhp2 + 0.02))) end
             local target_pos = nearest:get_pos()
             if target_pos then
                 local lost = hp_before - hp_after
@@ -181,7 +189,7 @@ function bot_shoot(pos, meta, cfg)
             local tname = tostring(ent.name)
             vbots2.log(bot_name, string.format("LASER hit %s dmg=%.1f left=%d ★%.2f ❄%.2f ♥%.2f", tname, cfg.damage, hp_after, ld, sd, mh))
             if hp_after == 0 and hp_before > 0 then
-                update_bot_kill_stats(meta, pos, true, tname)          -- laser kill
+                update_bot_kill_stats(meta, pos, true, tname, hp_before, 0)  -- laser kill
                 local nld = meta:get_float("laser_damage")
                 local nmh = meta:get_float("max_hp")
                 local upd = ""
@@ -367,9 +375,34 @@ end                                                                     -- funct
 --    armor = min(5, floor((lv-1)/4))
 --  victim_name: "player" for player kills, or entity name (e.g. "mobs_mc:creeper")
 --  is_laser: true for laser kill, false for shot kill (increments specific counter + log)
+-- Shared helper: find bot_body entity by bot position and key.
+-- Returns (obj, hp_before) or (nil, 0).
+local function find_bot_body(bot_pos, bot_key)
+    for _, obj in ipairs(minetest.get_objects_inside_radius(bot_pos, 0.5)) do
+        local ent = obj:get_luaentity()
+        if ent and ent.name == "vbots2:bot_body" and ent._key == bot_key then
+            return obj, obj:get_hp()
+        end -- if bot_body match
+    end -- loop over objects at bot_pos
+    return nil, 0
+end -- function find_bot_body
+
 -------------------------------------
-function update_bot_kill_stats(meta, bot_pos, is_laser, victim_name)
-    -- determine growth rate from victim type
+-- Level from kills: triangular threshold L*(L-1)/2, max_level cap.
+--------------------------------------
+local function kills_to_level(k, max_lv)
+    local lv = math.floor((1 + math.sqrt(1 + 8 * (k or 0))) / 2)
+    return math.min(max_lv, math.max(1, lv))
+end -- function kills_to_level
+
+-------------------------------------
+-- Bot kill stats: separated counters for laser/shot, shared HP/armor from total_kills.
+-- Victim weight: type_weight * (1 + hp/100) * (1 + armor/20) — tougher mobs = more XP.
+-- Self-heal: +0.1 HP on kill (applied after stat update).
+-- max level: 200 for laser/shot, 100 for HP/armor.
+-------------------------------------
+function update_bot_kill_stats(meta, bot_pos, is_laser, victim_name, victim_hp, victim_armor)
+    -- Determine base weight from victim type
     local rate = 0.15                                              -- default: zombie, misc
     if victim_name == "player" then
         rate = 1.0
@@ -380,86 +413,54 @@ function update_bot_kill_stats(meta, bot_pos, is_laser, victim_name)
         end                                                        -- if creeper/spider/skeleton
     end                                                            -- if victim_name not player
 
-    local kills = (meta:get_float("total_kills") or 0) + rate
-    meta:set_float("total_kills", kills)
+    -- HP/armor multiplier: tougher targets give more XP
+    local hp = (victim_hp and victim_hp > 0) and victim_hp or 20
+    local arm = (victim_armor and victim_armor > 0) and victim_armor or 0
+    local weight = rate * (1 + hp / 100) * (1 + arm / 20)
 
-    local level = math.floor(math.sqrt(kills + 0.01)) + 1
-    if level < 1 then level = 1 end                                -- if level underflow
+    -- Separated counters: weapon-specific + shared
+    local laser_kills = (meta:get_float("laser_kills") or 0) + (is_laser and weight or 0)
+    local shot_kills  = (meta:get_float("shot_kills")  or 0) + (is_laser and 0 or weight)
+    local total_kills = (meta:get_float("total_kills")  or 0) + weight
+    meta:set_float("laser_kills", laser_kills)
+    meta:set_float("shot_kills", shot_kills)
+    meta:set_float("total_kills", total_kills)
 
-    -- recalculate all stats from level (deterministic, not incremental)
-    local laser_dmg = math.min(36, 3 + (level - 1) * 1.5)
-    local shot_dmg  = math.min(21, 2 + (level - 1) * 0.9)
-    local max_hp    = math.min(27, 10 + (level - 1) * 0.8)
-    local armor     = math.min(5, math.floor((level - 1) / 4))
+    -- Levels: laser/shot max 200, HP/armor max 100
+    local laser_lv = kills_to_level(laser_kills, 200)
+    local shot_lv  = kills_to_level(shot_kills,  200)
+    local shared_lv = kills_to_level(total_kills, 100)
+
+    -- Stats from levels (linear scaling, cap at lv.100 for all — beyond 100 only display level)
+    local laser_dmg = math.min(36, 3 + (math.min(laser_lv, 100) - 1) * 33 / 99)
+    local shot_dmg  = math.min(21, 2 + (math.min(shot_lv,  100) - 1) * 19 / 99)
+    local max_hp    = math.min(27, math.floor(10 + (shared_lv - 1) * 17 / 99))
+    local armor     = math.min(5, math.floor(shared_lv * 5 / 100))
 
     meta:set_float("laser_damage", laser_dmg)
     meta:set_float("shot_damage", shot_dmg)
     meta:set_float("max_hp", max_hp)
     meta:set_int("armor", armor)
 
-    -- increment specific kill counter (for log display)
-    local kill_field = is_laser and "laser_kills" or "shot_kills" -- which kill counter
-    meta:set_int(kill_field, (meta:get_int(kill_field) or 0) + 1)
-
-    -- Update bot_body entity HP in the world (use floor for integer HP)
+    -- Update bot_body HP + self-heal on kill (0.1)
     local bot_key = meta:get_string("key")
-    for _, obj in ipairs(minetest.get_objects_inside_radius(bot_pos, 0.5)) do
-        local ent = obj:get_luaentity()
-        if ent and ent.name == "vbots2:bot_body" and ent._key == bot_key then
-            obj:set_hp(math.floor(max_hp))
-            -- update label entity above bot after stat change
-            vbots2.update_bot_label(bot_pos)
-            break
-        end -- if bot_body match
-    end -- loop over objects at bot_pos
+    local body, hp_before = find_bot_body(bot_pos, bot_key)
+    if body then
+        body:set_hp(math.min(max_hp, math.floor(hp_before + 0.1)))
+        vbots2.update_bot_label(bot_pos)
+    end -- if body found
 end -- function update_bot_kill_stats
 
 -------------------------------------
 -- Derive level-based combat ranges from kill stats.
--- Laser: 3 + 0.5/level (min 3); Shot: 5 + 0.5/level (min 5);
--- Danger detection: max(shot_range, 10).
---------------------------------------
+-- Laser: 3+0.5/lv (min 3); Shot: 5+1.0/lv (min 5); Danger=max(shot,10).
+-- Uses shared level from total_kills for range, weapon level for damage.
+-------------------------------------
 function vbots2.compute_bot_stats(meta)
-    local kills = meta:get_float("total_kills") or 0
-    local level = math.floor(math.sqrt(kills + 0.01)) + 1
+    local tk = tonumber(meta:get_string("total_kills")) or 0
+    local level = math.max(1, math.floor((1 + math.sqrt(1 + 8 * tk)) / 2))
     local laser_range = 3 + 0.5 * (level - 1)
     local shot_range = 5 + 1.0 * (level - 1)
     local danger_range = math.max(shot_range, 10)
     return level, laser_range, shot_range, danger_range
 end -- function vbots2.compute_bot_stats
-
--------------------------------------
--- Bot label visibility: show only to owner, within 5 blocks radius.
--- Runs every 0.5s to keep overhead minimal.
---------------------------------------
-local label_timer = 0
-minetest.register_globalstep(function(dtime)
-    label_timer = label_timer + dtime
-    if label_timer < 0.5 then return end; label_timer = 0
-    if not vbots2._bot_labels then return end
-    for key, obj in pairs(vbots2._bot_labels) do
-        if not obj or not obj:get_pos() then
-            vbots2._bot_labels[key] = nil                    -- dead entity
-        else
-            local pos = obj:get_pos()
-            local ent = obj:get_luaentity()
-            if ent then
-                local owner = ent._owner
-                local visible = false
-                if owner then
-                    for _, player in ipairs(minetest.get_connected_players()) do
-                        local pname = player:get_player_name()
-                        if pname == owner and vector.distance(player:get_pos(), pos) <= 5 then
-                            visible = true; break
-                        end                                                 -- if owner nearby
-                    end                                                     -- loop over players
-                end                                                         -- if owner set
-                if visible then
-                    obj:set_properties({nametag = ent._tag})
-                else
-                    obj:set_properties({nametag = ""})
-                end                                                         -- if visible
-            end                                                             -- if ent exists
-        end                                                             -- if obj alive
-    end                                                                 -- loop over labels
-end)                                                                    -- globalstep

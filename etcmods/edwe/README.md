@@ -66,14 +66,28 @@ Two wooden axe tools for Luanti 5.14.0+ (Minetest Game and VoxeLibre):
 
 - `edwe.max_nodes` — maximum nodes per operation (default: 10000). Set in `All Settings` or `settingtypes.txt`.
 
+## Protection Totem (`edwe:protect_totem`)
+
+A golden block that protects a 41×41 column (±20 in X/Z, full Y height) from building and digging by other players.
+
+- **Place:** golden totem block on ground → creates protection zone.
+- **Label:** floating gold tablet above totem showing `player : totem N`.
+- **Limit:** max 10 totems per player.
+- **Digging:** only the owner can remove the totem.
+- **Zone:** all blocks in the 41×41 column (±20 X/Z) are protected — other players cannot dig or place there.
+- **Bots:** owner's bots respect zone (cannot build/dig in other players' zones).
+
 ## Files
 
 | File | Purpose |
 |---|---|
-| `init.lua` | Shared state-machine helpers, tool registration, crafts, globalstep, leaveplayer |
+| `init.lua` | Shared state-machine helpers, tool registration, crafts, globalstep |
 | `fill.lua` | `edwe_fill_cuboid()`, `edwe_delete_cuboid()`, `edwe_is_water()`, `edwe_is_grass()` |
-| `textures/edwe_wooden_axe.png` | Fill axe texture (standard wooden axe) |
+| `protect.lua` | Protection totem node+entity+index+protection_handler+LBM |
+| `textures/edwe_wooden_axe.png` | Fill axe texture |
 | `textures/edwe_wooden_axe_delete.png` | Delete axe texture (inverted 180°) |
+| `textures/edwe_totem_block.png` | Golden totem block (16×16) |
+| `textures/edwe_totem_tablet.png` | Golden tablet label (16×32) |
 
 ## Compatibility
 
