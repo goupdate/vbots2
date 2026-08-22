@@ -162,7 +162,7 @@ local function get_formspec(pos,meta)
                      .."★" .. laser_lv .. " " .. string.format("%.1f", laser) .. "/36  "
                      .."❄" .. shot_lv .. " " .. string.format("%.1f", shot) .. "/21  "
                      .."♥" .. maxhp .. "/27  "
-                     .."🛡 Armor: " .. armor .. "/5"
+                     .."⛨ " .. armor .. "/5  "
                      .."]"
                      ..panel_main(bot_pos,fs_panel,meta:get_int("pvp"))
                      ..panel_code(bot_key,fs_program)

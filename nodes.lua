@@ -255,23 +255,35 @@ function vbots2.update_bot_label(bot_pos)
     local have = tk - kills_cur
     local pct = need > 0 and math.floor((have / need) * 100) or 0
     if pct > 99 then pct = 99 end
-    local tag = string.format("Lv.%d (%d%%)  ★%d %.1f/36  ❄%d %.1f/21  ♥ %d/27  A %d",
+local tag = string.format("Lv.%d (%d%%)  ★%d %.1f/36  ❄%d %.1f/21  ♥ %d/27  ⛨ %d",
         shared_lv, pct, laser_lv, laser, shot_lv, shot, hp, armor)
 
     if not vbots2._bot_labels then vbots2._bot_labels = {} end
+    -- find bot_body entity to attach label to
+    local body = nil
+    for _, obj in ipairs(minetest.get_objects_inside_radius(bot_pos, 1)) do
+        local ent = obj:get_luaentity()
+        if ent and ent.name == "vbots2:bot_body" then
+            body = obj; break
+        end                                                       -- if bot_body
+    end                                                           -- loop over objects
+    if not body then return end                                   -- no body entity yet
     -- remove old label if any
     local old = vbots2._bot_labels[bot_key]
     if old and old:get_pos() then old:remove() end
-    -- spawn standalone entity above bot
-    local label_pos = {x = bot_pos.x + 1.0, y = bot_pos.y + 0.1, z = bot_pos.z + 0.5}
-    local obj = minetest.add_entity(label_pos, "vbots2:bot_label")
+    -- spawn label entity and attach to bot_body (moves with the bot)
+    local obj = minetest.add_entity(bot_pos, "vbots2:bot_label")
     if obj then
+        obj:set_attach(body, "", {x = 0.5, y = 0.1, z = 0}, {x = 0, y = 0, z = 0})
+        obj:set_properties({nametag = tag})                    -- show immediately
         local ent = obj:get_luaentity()
-        ent._owner = owner
-        ent._tag = tag
-        obj:set_properties({nametag = tag})
+        if ent then
+            ent._owner = owner
+            ent._tag = tag
+            ent._key = bot_key
+        end                                                   -- if luaentity ready
         vbots2._bot_labels[bot_key] = obj
-    end -- if obj spawned
+    end                                                       -- if obj spawned
 end -- function vbots2.update_bot_label
 
 -- Bot label entity: standalone upright_sprite above bot, shows combat stats with icons.
@@ -295,14 +307,14 @@ minetest.register_entity("vbots2:bot_label", {
     on_step = function(self, dtime)
         self._check_timer = (self._check_timer or 0) + dtime
         if self._check_timer < 0.5 then return end; self._check_timer = 0
-        if not self._owner then return end                        -- not yet initialized
+        if not self._owner or not self._tag then return end       -- not yet initialized
         local p = minetest.get_player_by_name(self._owner)
         if not p then
             self.object:set_properties({nametag = ""})            -- player offline → hide
             return
         end                                                       -- if player offline
         local ok = vector.distance(p:get_pos(), self.object:get_pos()) <= 20
-        self.object:set_properties({nametag = ok and (self._tag or "") or ""})
+        self.object:set_properties({nametag = ok and self._tag or ""})
     end, -- on_step
 })
 
