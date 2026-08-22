@@ -143,7 +143,7 @@ local function get_formspec(pos,meta)
     if shot_lv  < 1 then shot_lv  = 1 end
     if shared_lv < 1 then shared_lv = 1 end
     local laser = tonumber(meta:get_string("laser_damage")) or 8
-    local shot = tonumber(meta:get_string("shot_damage")) or 16
+    local shot = tonumber(meta:get_string("shot_damage")) or 32
     local maxhp = math.floor(tonumber(meta:get_string("max_hp")) or 12)
     local armor = tonumber(meta:get_string("armor")) or 0
     local hp_cap = math.min(27, math.floor(12 + (math.min(shared_lv, 100) - 1) * 15 / 99))
@@ -161,7 +161,7 @@ local function get_formspec(pos,meta)
                      .."Lv." .. shared_lv .. " (" .. lvpct .. "%)  "
                      .."Kills: " .. kills .. " / " .. kills_next .. "  "
                      .."★" .. laser_lv .. " " .. string.format("%.1f", laser) .. "/36  "
-                     .."❄" .. shot_lv .. " " .. string.format("%.1f", shot) .. "/21  "
+                     .."❄" .. shot_lv .. " " .. string.format("%.1f", shot) .. "/42  "
                      .."♥" .. hp_cap .. "/" .. hp_cap .. "  "
                      .."▣ " .. armor .. "/5  "
                      .."]"

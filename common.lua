@@ -424,7 +424,7 @@ function update_bot_kill_stats(meta, bot_pos, is_laser, victim_name, victim_hp, 
 
     -- Stats from levels (linear scaling, cap at lv.100 for all — beyond 100 only display level)
     local laser_dmg = math.min(36, 8 + (math.min(laser_lv, 100) - 1) * 28 / 99)
-    local shot_dmg  = math.min(21, 16 + (math.min(shot_lv,  100) - 1) * 5 / 99)
+    local shot_dmg  = math.min(42, 32 + (math.min(shot_lv,  100) - 1) * 10 / 99)
     local max_hp    = math.min(27, math.floor(12 + (shared_lv - 1) * 15 / 99))
     local armor     = math.min(5, math.floor(shared_lv * 5 / 100))
 

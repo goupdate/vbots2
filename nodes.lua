@@ -183,13 +183,10 @@ minetest.register_entity("vbots2:bot_body", {
         local pos = self.object:get_pos()
         if pos then
             local dmg = damage or 0
-            if dmg <= 0 then
-                bot_show_damage_number(pos, "-0")
-            else
+            if dmg > 0 then
                 bot_show_damage_number(pos, "-" .. string.format("%.1f", dmg))
-            end
+            end -- if dmg > 0
         end
-        local hp = self.object:get_hp() - (damage or 0)
         -- track damage for damaged_check / turn_danger commands
         local epos = self.object:get_pos()
         if epos then
@@ -197,7 +194,8 @@ minetest.register_entity("vbots2:bot_body", {
             local meta = minetest.get_meta(bpos)
             meta:set_float("damage_time", minetest.get_gametime())
             if puncher and puncher.get_pos then
-                meta:set_string("damage_pos", minetest.serialize(puncher:get_pos()))
+                local pp = puncher:get_pos()
+                meta:set_string("damage_pos", minetest.serialize({x=pp.x, y=pp.y, z=pp.z}))
             end
         end
         if hp <= 0 then
@@ -273,7 +271,7 @@ function vbots2.update_bot_label(bot_pos)
     local shot_lv  = vbots2.kills_to_level(sk, 200)
     local shared_lv = vbots2.kills_to_level(tk, 100)
     local laser = tonumber(meta:get_string("laser_damage")) or 8
-    local shot  = tonumber(meta:get_string("shot_damage")) or 16
+    local shot  = tonumber(meta:get_string("shot_damage")) or 32
     local maxhp = math.floor(tonumber(meta:get_string("max_hp")) or 12)
     local armor = tonumber(meta:get_string("armor")) or 0
     -- calculate max_hp from level formula (not meta — may be outdated for old bots)
@@ -298,7 +296,7 @@ function vbots2.update_bot_label(bot_pos)
     end                                                           -- loop over objects
     if not body then return end                                   -- no body entity yet
     local cur_hp = math.floor(body:get_hp())
-    local tag = string.format("Lv.%d (%d%%)  ★%d %.1f/36  ❄%d %.1f/21  ♥ %d/%d  ▣ %d",
+    local tag = string.format("Lv.%d (%d%%)  ★%d %.1f/36  ❄%d %.1f/42  ♥ %d/%d  ▣ %d",
             shared_lv, pct, laser_lv, laser, shot_lv, shot, cur_hp, hp_cap, armor)
 
     -- remove old label if any
@@ -350,7 +348,7 @@ minetest.register_entity("vbots2:bot_label", {
             end                                                   -- if was visible
             return
         end                                                       -- if player offline
-        local ok = vector.distance(p:get_pos(), self.object:get_pos()) <= 20
+        local ok = vector.distance(p:get_pos(), self.object:get_pos()) <= 50
         if ok ~= self._visible then                               -- visibility changed
             self.object:set_properties({nametag = ok and self._tag or ""})
             self._visible = ok
