@@ -72,7 +72,7 @@ function find_nearest_hostile(pos, radius, player, in_front_only)
                 if in_front_only and d > 0 then  -- if cone filter
                     local to_target = vector.normalize({x = epos.x - pos.x, y = epos.y - pos.y, z = epos.z - pos.z})
                     local fdot = -(facing_dir.x * to_target.x + facing_dir.y * to_target.y + facing_dir.z * to_target.z)
-                    consider = fdot >= 0.707
+                    consider = fdot >= 0.5                      -- 120° cone (cos 60°)
                 elseif in_front_only then       -- if cone filter
                     consider = false
                 end                             -- if cone filter

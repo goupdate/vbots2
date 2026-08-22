@@ -198,31 +198,26 @@ minetest.register_entity("vbots2:bot_body", {
                 meta:set_string("damage_pos", minetest.serialize({x=pp.x, y=pp.y, z=pp.z}))
             end
         end
-        if hp <= 0 then
-            -- bot destroyed — destroy the node
-            local pos = self.object:get_pos()
-            if pos then
-                pos = {x = math.floor(pos.x + 0.5), y = math.floor(pos.y), z = math.floor(pos.z + 0.5)}
-                local node = minetest.get_node(pos)
-                if node.name:find("^vbots2:") then
-                    -- remove label entity before destroying bot node
-                    local bm = minetest.get_meta(pos)
-                    local bk = bm:get_string("key")
-                    if vbots2._bot_labels and vbots2._bot_labels[bk] then
-                        vbots2._bot_labels[bk]:remove()
-                        vbots2._bot_labels[bk] = nil
-                    end                                   -- if label exists
-                    minetest.set_node(pos, {name = "air"})
-                end
-            end
-            self.object:remove()
-            if vbots2._bot_body_owner then vbots2._bot_body_owner[self.object] = nil end
-        else
-            self.object:set_hp(hp)
-        end
+        -- engine handles HP; on_death handles destruction
     end,
     on_death = function(self)
-        -- handled by on_punch
+        -- bot destroyed by mob/player — remove node
+        local epos = self.object:get_pos()
+        if epos then
+            local bpos = {x = math.floor(epos.x + 0.5), y = math.floor(epos.y), z = math.floor(epos.z + 0.5)}
+            local node = minetest.get_node(bpos)
+            if node.name:find("^vbots2:") then
+                -- remove label entity before destroying bot node
+                local bm = minetest.get_meta(bpos)
+                local bk = bm:get_string("key")
+                if vbots2._bot_labels and vbots2._bot_labels[bk] then
+                    vbots2._bot_labels[bk]:remove()
+                    vbots2._bot_labels[bk] = nil
+                end                                             -- if label exists
+                minetest.set_node(bpos, {name = "air"})
+            end                                                 -- if vbots2 node
+        end                                                     -- if epos
+        if vbots2._bot_body_owner then vbots2._bot_body_owner[self.object] = nil end
     end,
     on_step = function(self, dtime)
         -- passive heal: +0.01 HP/sec if not attacked in 10s, only when below max
@@ -299,10 +294,20 @@ function vbots2.update_bot_label(bot_pos)
     local tag = string.format("Lv.%d (%d%%)  ★%d %.1f/36  ❄%d %.1f/42  ♥ %d/%d  ▣ %d",
             shared_lv, pct, laser_lv, laser, shot_lv, shot, cur_hp, hp_cap, armor)
 
-    -- remove old label if any
+    -- remove old or update existing label
     local old = vbots2._bot_labels[bot_key]
-    if old and old:get_pos() then old:remove() end
-    -- spawn label entity and attach to bot_body (moves with the bot)
+    if old and old:get_pos() then
+        old:set_properties({nametag = tag})
+        local ent = old:get_luaentity()
+        if ent then
+            ent._tag = tag
+            ent._owner = owner
+            ent._key = bot_key
+            ent._maxhp = hp_cap
+        end                                                       -- if luaentity
+        return                                                    -- label already alive, just updated
+    end                                                           -- if old label exists
+    -- spawn new label entity and attach to bot_body (moves with the bot)
     local obj = minetest.add_entity(bot_pos, "vbots2:bot_label")
     if obj then
         obj:set_attach(body, "", {x = 0.5, y = 0.1, z = 0}, {x = 0, y = 0, z = 0})
