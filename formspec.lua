@@ -130,25 +130,26 @@ local function get_formspec(pos,meta)
     --print(dump(meta:to_table().fields))
 	--print("Panel:"..fs_panel)
 	--print("Program:"..fs_program)
-    local kills = meta:get_float("total_kills") or 0
+    local kills = tonumber(meta:get_string("total_kills")) or 0
     local level = math.floor(math.sqrt(kills)) + 1
-    local laser = meta:get_float("laser_damage") or 3
-    local shot = meta:get_float("shot_damage") or 2
-    local maxhp = math.floor(meta:get_float("max_hp") or 10)
-    local armor = meta:get_int("armor") or 0
+    local laser = tonumber(meta:get_string("laser_damage")) or 3
+    local shot = tonumber(meta:get_string("shot_damage")) or 2
+    local maxhp = math.floor(tonumber(meta:get_string("max_hp")) or 10)
+    local armor = tonumber(meta:get_string("armor")) or 0
     local lvpct = math.floor((kills - (level-1)*(level-1)) / (level*level - (level-1)*(level-1)) * 100)
     if lvpct > 99 then lvpct = 99 end
-    local formspec = "size[16,10.5]"
+    local next_level = level * level                              -- kills needed for next level
+    local formspec = "size[16,9]"
                      .."field[3,0.2;3,1;bot_name;;" ..bot_name.. "]"
                      .."image_button[5.5,0;1,1;vbots_gui_check.png;bot_rename;]"
                      .."tooltip[5.5,0;1,1;Rename]"
-                     .."label[0.5,0.8;"
+                     .."label[0.5,0.5;"
                      .."Lv." .. level .. "(" .. lvpct .. "%)  "
-                     .."Kills:" .. kills .. "  "
-                     .."♥HP:" .. maxhp .. "  "
-                     .."🛡" .. armor .. "  "
-                     .."★" .. string.format("%.1f", laser) .. "  "
-                     .."❄" .. string.format("%.1f", shot)
+                     .."Kills: " .. kills .. " / " .. next_level .. "  "
+                     .."♥" .. maxhp .. "  "
+                     .."🛡 Armor: " .. armor .. "  "
+                     .."★ " .. string.format("%.1f", laser) .. "  "
+                     .."❄ " .. string.format("%.1f", shot)
                      .."]"
                      ..panel_main(bot_pos,fs_panel,meta:get_int("pvp"))
                      ..panel_code(bot_key,fs_program)

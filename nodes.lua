@@ -227,12 +227,13 @@ function vbots2.update_bot_label(bot_pos)
     if bot_key == "" then return end                          -- no key = not initialized
     local owner = meta:get_string("owner")
     if owner == "" then return end                            -- no owner = invalid
-    local kills = meta:get_float("total_kills") or 0
+    local kills = tonumber(meta:get_string("total_kills")) or 0
+    if kills == 0 then kills = 0 end                              -- 0-value keys in meta return ""
     local level = math.floor(math.sqrt(kills + 0.01)) + 1
-    local laser = meta:get_float("laser_damage") or 3
-    local shot = meta:get_float("shot_damage") or 2
-    local hp = math.floor(meta:get_float("max_hp") or 10)
-    local armor = meta:get_int("armor") or 0
+    local laser = tonumber(meta:get_string("laser_damage")) or 3
+    local shot = tonumber(meta:get_string("shot_damage")) or 2
+    local hp = tonumber(meta:get_string("max_hp")) or 10
+    local armor = tonumber(meta:get_string("armor")) or 0
     -- progress to next level: (kills - threshold_current) / (threshold_next - threshold_current) * 100
     local kills_for_lvl = (level - 1) * (level - 1)             -- kills needed to REACH current level
     local kills_for_next = level * level                         -- kills needed for NEXT level
@@ -240,7 +241,7 @@ function vbots2.update_bot_label(bot_pos)
     local have = kills - kills_for_lvl                           -- kills earned this level
     local pct = math.floor((have / need) * 100)
     if pct > 99 then pct = 99 end                                -- cap until actually leveled
-    local tag = string.format("Lv.%d(%d%%)  ★%.1f/36  ❄%.1f/21  ♥%d/27  🛡%d",
+    local tag = string.format("Lv.%d(%d%%)  ★ %.1f/36  ❄ %.1f/21  ♥ %d/27  A %d",
         level, pct, laser, shot, hp, armor)
 
     if not vbots2._bot_labels then vbots2._bot_labels = {} end

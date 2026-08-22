@@ -172,6 +172,14 @@ vbots2.bot_restore = function(pos)
             inv:set_size("p" .. i, 0)
         end                              -- loop over program lists
     end                                  -- if migrating
+    -- migrate missing stat keys for bots placed before progression system
+    if meta:get_string("laser_damage") == "" then
+        meta:set_float("laser_damage", 3.0)
+        meta:set_float("shot_damage", 2.0)
+        meta:set_float("max_hp", 10.0)
+        meta:set_float("total_kills", 0.0)
+        meta:set_int("armor", 0)
+    end                                                   -- if migrating stats
     vbots2.ensure_prog_inv(bot_key)
     if not vbots2.bot_info[bot_key] then
 vbots2.bot_info[bot_key] = { owner = bot_owner, pos = pos, name = bot_name}
