@@ -156,7 +156,7 @@ local function get_formspec(pos,meta)
                      .."field[3,0.2;3,1;bot_name;;" ..bot_name.. "]"
                      .."image_button[5.5,0;1,1;vbots_gui_check.png;bot_rename;]"
                      .."tooltip[5.5,0;1,1;Rename]"
-                     .."label[4.0,9.40;"
+                     .."label[4.0,9.15;"
                      .."Lv." .. shared_lv .. " (" .. lvpct .. "%)  "
                      .."Kills: " .. kills .. " / " .. kills_next .. "  "
                      .."★" .. laser_lv .. " " .. string.format("%.1f", laser) .. "/36  "

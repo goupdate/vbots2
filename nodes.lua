@@ -263,7 +263,7 @@ function vbots2.update_bot_label(bot_pos)
     local old = vbots2._bot_labels[bot_key]
     if old and old:get_pos() then old:remove() end
     -- spawn standalone entity above bot
-    local label_pos = {x = bot_pos.x + 0.5, y = bot_pos.y - 0.5, z = bot_pos.z + 0.5}
+    local label_pos = {x = bot_pos.x + 1.0, y = bot_pos.y + 0.1, z = bot_pos.z + 0.5}
     local obj = minetest.add_entity(label_pos, "vbots2:bot_label")
     if obj then
         local ent = obj:get_luaentity()
@@ -317,16 +317,21 @@ minetest.register_globalstep(function(dtime)
     if not vbots2.bot_info then return end
     for _, info in pairs(vbots2.bot_info) do
         local bpos = info.pos
-        if bpos then                                           -- bot has position
-            local meta = minetest.get_meta(bpos)
-            local bk = meta:get_string("key")
-            if bk ~= "" then                                   -- valid key
-                local old = vbots2._bot_labels and vbots2._bot_labels[bk]
-                if not old or not old:get_pos() then           -- no label or dead label
-                    vbots2.update_bot_label(bpos)
-                end                                            -- if label missing
-            end                                                -- if valid key
-        end                                                    -- if has pos
+        if bpos and type(bpos.x) == "number" then              -- bot has valid position
+            local node = minetest.get_node(bpos)
+            if not node.name:find("^vbots2:") then            -- not a bot node (possibly destroyed)
+                vbots2.bot_info[_] = nil                       -- clean up stale entry
+            else                                                -- valid bot node
+                local meta = minetest.get_meta(bpos)
+                local bk = meta:get_string("key")
+                if bk ~= "" then                                -- valid key
+                    local old = vbots2._bot_labels and vbots2._bot_labels[bk]
+                    if not old or not old:get_pos() then        -- no label or dead label
+                        vbots2.update_bot_label(bpos)
+                    end                                         -- if label missing
+                end                                             -- if valid key
+            end                                                 -- if valid bot node
+        end                                                    -- if has valid pos
     end                                                        -- loop over bot_info
 end)                                                           -- globalstep
 
